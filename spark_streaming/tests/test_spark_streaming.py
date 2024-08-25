@@ -1,47 +1,48 @@
-import pytest
+# tests/test_spark_streaming.py
+import unittest
 from pyspark.sql import SparkSession
-from pyspark.sql.types import StructType, StructField, StringType, FloatType, TimestampType
-import spark_streaming
+from pyspark.sql.types import StructType, StructField, IntegerType, FloatType, LongType
+from pyspark.sql.functions import from_json, col
 
-@pytest.fixture(scope="module")
-def spark():
-    return SparkSession.builder.master("local[2]").appName("test").getOrCreate()
+class TestSparkStreaming(unittest.TestCase):
 
-def test_data_processing(spark):
-    # Create a sample dataframe
-    schema = StructType([
-        StructField("device_id", StringType()),
-        StructField("timestamp", TimestampType()),
-        StructField("temperature", FloatType()),
-        StructField("humidity", FloatType()),
-        StructField("pressure", FloatType())
-    ])
-    
-    data = [
-        ("device_1", "2023-05-01 10:00:00", 25.5, 60.0, 1013.0),
-        ("device_1", "2023-05-01 10:01:00", 26.0, 61.0, 1012.5),
-        ("device_2", "2023-05-01 10:00:00", 24.5, 59.0, 1014.0)
-    ]
-    
-    df = spark.createDataFrame(data, schema)
-    
-    # Process the data
-    result_df = df.groupBy("device_id").agg({
-        "temperature": "avg",
-        "humidity": "avg",
-        "pressure": "avg"
-    })
-    
-    # Check the results
-    result = result_df.collect()
-    assert len(result) == 2
-    
-    device_1 = next(row for row in result if row["device_id"] == "device_1")
-    assert device_1["avg(temperature)"] == pytest.approx(25.75)
-    assert device_1["avg(humidity)"] == pytest.approx(60.5)
-    assert device_1["avg(pressure)"] == pytest.approx(1012.75)
-    
-    device_2 = next(row for row in result if row["device_id"] == "device_2")
-    assert device_2["avg(temperature)"] == pytest.approx(24.5)
-    assert device_2["avg(humidity)"] == pytest.approx(59.0)
-    assert device_2["avg(pressure)"] == pytest.approx(1014.0)
+    @classmethod
+    def setUpClass(cls):
+        cls.spark = SparkSession.builder.appName("TestIoTStreaming").master("local[2]").getOrCreate()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.spark.stop()
+
+    def test_schema(self):
+        # Define the expected schema
+        expected_schema = StructType([
+            StructField("device_id", IntegerType()),
+            StructField("timestamp", LongType()),
+            StructField("temperature", FloatType()),
+            StructField("humidity", FloatType()),
+            StructField("pressure", FloatType())
+        ])
+
+        # Create a sample DataFrame with the expected schema
+        data = [
+            ('{"device_id": 1, "timestamp": 1625097600, "temperature": 25.5, "humidity": 50.0, "pressure": 1000.0}',)
+        ]
+        df = self.spark.createDataFrame(data, ["value"])
+
+        # Parse the JSON data
+        parsed_df = df.select(from_json(col("value").cast("string"), expected_schema).alias("data")).select("data.*")
+
+        # Check if the parsed DataFrame has the expected schema
+        self.assertEqual(parsed_df.schema, expected_schema)
+
+        # Check if the data is correctly parsed
+        row = parsed_df.collect()[0]
+        self.assertEqual(row['device_id'], 1)
+        self.assertEqual(row['timestamp'], 1625097600)
+        self.assertEqual(row['temperature'], 25.5)
+        self.assertEqual(row['humidity'], 50.0)
+        self.assertEqual(row['pressure'], 1000.0)
+
+if __name__ == '__main__':
+    unittest.main()

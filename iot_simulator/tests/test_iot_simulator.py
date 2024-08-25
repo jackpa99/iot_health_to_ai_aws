@@ -1,31 +1,40 @@
-import pytest
-from iot_simulator import IoTDevice
+# tests/test_iot_simulator.py
+import unittest
+from unittest.mock import patch, MagicMock
+from iot_simulator import generate_device_data, simulate_iot_devices
 
-def test_iot_device():
-    device = IoTDevice("test_device")
-    data = device.get_data()
-    
-    assert "device_id" in data
-    assert "timestamp" in data
-    assert "temperature" in data
-    assert "humidity" in data
-    assert "pressure" in data
-    
-    assert data["device_id"] == "test_device"
-    assert 0 <= data["temperature"] <= 100
-    assert 0 <= data["humidity"] <= 100
-    assert 900 <= data["pressure"] <= 1100
+class TestIoTSimulator(unittest.TestCase):
 
-def test_kafka_producer(mocker):
-    mock_producer = mocker.patch('kafka.KafkaProducer')
-    mock_producer.return_value.send.return_value = None
-    
-    from iot_simulator import generate_data
-    
-    # Run generate_data for a short time
-    mocker.patch('time.sleep', side_effect=InterruptedError)
-    with pytest.raises(InterruptedError):
-        generate_data(num_devices=1, interval=0)
-    
-    # Check if the producer was called
-    mock_producer.return_value.send.assert_called()
+    def test_generate_device_data(self):
+        device_id = 1
+        data = generate_device_data(device_id)
+        self.assertEqual(data['device_id'], device_id)
+        self.assertIn('timestamp', data)
+        self.assertIn('temperature', data)
+        self.assertIn('humidity', data)
+        self.assertIn('pressure', data)
+
+    @patch('iot_simulator.KafkaProducer')
+    @patch('iot_simulator.time.sleep', side_effect=InterruptedError)  # To break the infinite loop
+    def test_simulate_iot_devices(self, mock_sleep, mock_kafka_producer):
+        mock_producer = MagicMock()
+        mock_kafka_producer.return_value = mock_producer
+
+        num_devices = 3
+        kafka_servers = ['localhost:9092']
+
+        with self.assertRaises(InterruptedError):
+            simulate_iot_devices(num_devices, kafka_servers)
+
+        mock_kafka_producer.assert_called_once_with(
+            bootstrap_servers=kafka_servers,
+            value_serializer=unittest.mock.ANY
+        )
+
+        # Check that data was sent for each device
+        self.assertEqual(mock_producer.send.call_count, num_devices)
+        for i in range(num_devices):
+            mock_producer.send.assert_any_call('iot-data', unittest.mock.ANY)
+
+if __name__ == '__main__':
+    unittest.main()

@@ -1,50 +1,58 @@
-import pytest
-from unittest.mock import patch, MagicMock
-import sagemaker_train
+# tests/test_sagemaker_train.py
+import unittest
+import pandas as pd
+import numpy as np
+import joblib
+import os
+from sagemaker_train import train_models
 
-@pytest.fixture
-def mock_sagemaker():
-    with patch('sagemaker.Session') as mock_session, \
-         patch('sagemaker.estimator.Estimator') as mock_estimator:
-        mock_session_instance = MagicMock()
-        mock_session.return_value = mock_session_instance
-        mock_estimator_instance = MagicMock()
-        mock_estimator.return_value = mock_estimator_instance
-        yield mock_session_instance, mock_estimator_instance
+class TestSageMakerTrain(unittest.TestCase):
 
-def test_train_model(mock_sagemaker):
-    mock_session, mock_estimator = mock_sagemaker
-    
-    # Mock the necessary methods and attributes
-    mock_session.default_bucket.return_value = 'test-bucket'
-    mock_estimator.latest_training_job.job_name = 'test-job'
-    mock_estimator.model_data = 's3://test-bucket/test-job/output/model.tar.gz'
+    def setUp(self):
+        # Create a sample dataset
+        devices = range(2)
+        data = []
+        for device in devices:
+            device_data = pd.DataFrame({
+                'device_id': [device] * 100,
+                'temperature': np.random.uniform(20, 30, 100),
+                'humidity': np.random.uniform(40, 60, 100),
+                'pressure': np.random.uniform(990, 1010, 100)
+            })
+            data.append(device_data)
+        self.df = pd.concat(data, ignore_index=True)
 
-    # Call the function we want to test
-    model_uri = sagemaker_train.train_model()
+    def test_train_models(self):
+        # Train models
+        train_models(self.df)
 
-    # Assert that the necessary methods were called
-    mock_session.default_bucket.assert_called_once()
-    mock_estimator.fit.assert_called_once()
+        # Check if models are saved for each device
+        for device in range(2):
+            model_path = f'/tmp/model_device_{device}.joblib'
+            self.assertTrue(os.path.exists(model_path))
 
-    # Assert that the function returns the correct model URI
-    assert model_uri == 's3://test-bucket/test-job/output/model.tar.gz'
+            # Load the model and make sure it's an IsolationForest
+            model = joblib.load(model_path)
+            self.assertEqual(str(type(model)), "<class 'sklearn.ensemble._iforest.IsolationForest'>")
 
-def test_prepare_data():
-    # You would implement this test based on how prepare_data is implemented
-    # For example:
-    data = sagemaker_train.prepare_data()
-    assert isinstance(data, dict)
-    assert 'train' in data
-    assert 'validation' in data
+            # Test the model with some data
+            device_data = self.df[self.df['device_id'] == device]
+            features = ['temperature', 'humidity', 'pressure']
+            X = device_data[features]
+            predictions = model.predict(X)
 
-def test_create_estimator(mock_sagemaker):
-    mock_session, _ = mock_sagemaker
-    
-    estimator = sagemaker_train.create_estimator(mock_session)
-    
-    # Assert that the Estimator was created with the correct parameters
-    # The exact assertions will depend on how you've implemented create_estimator
-    assert estimator is not None
+            # Check if predictions are made for all rows
+            self.assertEqual(len(predictions), len(X))
 
-# Add more tests as needed for other functions in sagemaker_train.py
+            # Check if predictions are either 1 (normal) or -1 (anomaly)
+            self.assertTrue(all((predictions == 1) | (predictions == -1)))
+
+    def tearDown(self):
+        # Clean up saved models
+        for device in range(2):
+            model_path = f'/tmp/model_device_{device}.joblib'
+            if os.path.exists(model_path):
+                os.remove(model_path)
+
+if __name__ == '__main__':
+    unittest.main()
