@@ -1,5 +1,5 @@
 venv/
-anomaly_detection/tests/.pytest_cache/
+anomaly_detection/tests/.pytest_cache
 iot_simulator/tests/__pycache__
 iot_simulator/tests/.pytest_cache
 kafka_producer/tests/.pytest_cache

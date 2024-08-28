@@ -24,10 +24,15 @@ Parameters:
     Type: String
     Default: t2.micro
   KeyName:
-    Type: AWS::EC2::KeyPair::KeyName
+    Type: String
+    Default: ''
+    Description: Name of an existing EC2 KeyPair (optional)
   S3BucketName:
     Type: String
     Default: my-iot-anomaly-detection-bucket
+
+Conditions:
+  HasKeyName: !Not [!Equals [!Ref KeyName, '']]
 
 Resources:
   VPC:
@@ -110,7 +115,7 @@ Resources:
     Type: AWS::EC2::Instance
     Properties:
       InstanceType: !Ref EC2InstanceType
-      KeyName: !Ref KeyName
+      KeyName: !If [HasKeyName, !Ref KeyName, !Ref 'AWS::NoValue']
       ImageId: ami-0747bdcabd34c712a  # Amazon Linux 2 AMI (HVM), SSD Volume Type
       NetworkInterfaces: 
         - AssociatePublicIpAddress: "true"
