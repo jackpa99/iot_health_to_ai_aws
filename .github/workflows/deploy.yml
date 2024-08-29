@@ -32,14 +32,20 @@ jobs:
         uses: aws-actions/amazon-ecr-login@v1
 
       - name: Build, tag, and push Docker image
-        env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: iot-ecr
-          IMAGE_TAG: ${{ github.sha }}
         run: |
-          echo "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
-          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG ./iot_simulator
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          ECR_REGISTRY=${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY=iot-repo
+          IMAGE_TAG=${{ github.sha }}
+          
+          echo "ECR_REGISTRY=${ECR_REGISTRY}"
+          echo "ECR_REPOSITORY=${ECR_REPOSITORY}"
+          echo "IMAGE_TAG=${IMAGE_TAG}"
+          
+          IMAGE_URI=$ECR_REGISTRY/$ECR_REPOSITORY:${IMAGE_TAG,,}
+          docker build -t $IMAGE_URI ./iot_simulator
+          docker push $IMAGE_URI
+
+          echo "IMAGE_URI=$IMAGE_URI" >> $GITHUB_ENV
 
       - name: Create task definition file
         run: |
@@ -51,7 +57,7 @@ jobs:
         with:
           task-definition: task-definition.json
           container-name: iot-anomaly-detection
-          image: ${{ steps.login-ecr.outputs.registry }}/{ECR_REPOSITORY}}:${{ github.sha }}
+          image: ${{ env.IMAGE_URI }}
 
       - name: Create ECS Service if not exists
         env:
