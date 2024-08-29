@@ -53,11 +53,7 @@ jobs:
         id: task-def
         uses: aws-actions/amazon-ecs-render-task-definition@v1
         with:
-<<<<<<< HEAD
           task-definition: .aws/task-definition.json
-=======
-          task-definition: ./aws/task-definition.json
->>>>>>> e7c855d5ee04fd2f55c611b7f3daa50c84dfa98b
           container-name: iot-anomaly-detection
           image: ${{ env.IMAGE_URI }}
 
