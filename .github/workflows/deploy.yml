@@ -50,7 +50,7 @@ jobs:
         with:
           task-definition: task-definition.json
           container-name: iot-anomaly-detection
-          image: ${{ steps.login-ecr.outputs.registry }}/my-repo:${{ github.sha }}
+          image: ${{ steps.login-ecr.outputs.registry }}/{ECR_REPOSITORY}}:${{ github.sha }}
 
       - name: Create ECS Service if not exists
         env:
