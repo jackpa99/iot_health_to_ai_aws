@@ -10,7 +10,7 @@ env:
   ECR_REPOSITORY: iot-ecr
   ECS_CLUSTER: iot-cluster
   ECS_SERVICE: iot-anomaly-detection
-  ECS_TASK_DEFINITION: .aws/task-definition.json
+  xECS_TASK_DEFINITION: .aws/task-definition.json
 
 jobs:
   deploy:
@@ -53,27 +53,35 @@ jobs:
         id: task-def
         uses: aws-actions/amazon-ecs-render-task-definition@v1
         with:
-          task-definition: task-definition.json
+          task-definition: ./aws/task-definition.json
           container-name: iot-anomaly-detection
           image: ${{ env.IMAGE_URI }}
 
-      - name: Create ECS Service if not exists
-        env:
-          CLUSTER_NAME: iot-cluster
-          SERVICE_NAME: iot-anomaly-detection
-          TASK_DEFINITION: ${{ steps.task-def.outputs.task-definition }}
+      - name: Check if ECS Service Exists
+        id: check-service
         run: |
-          if ! aws ecs describe-services --cluster $CLUSTER_NAME --services $SERVICE_NAME | grep $SERVICE_NAME; then
+          aws ecs describe-services --cluster iot-cluster --services iot-anomaly-detection --query "services[0].serviceName" --output text || echo "MISSING"
+
+      - name: Create or Update ECS Service
+        id: create-update-service
+        run: |
+          if [ "${{ steps.check-service.outputs.result }}" = "MISSING" ]; then
+            echo "Creating new ECS service"
             aws ecs create-service \
-              --cluster $CLUSTER_NAME \
-              --service-name $SERVICE_NAME \
-              --task-definition $TASK_DEFINITION \
+              --cluster iot-cluster \
+              --service-name iot-anomaly-detection \
+              --task-definition ${{ steps.task-def.outputs.task-definition-arn }} \
               --desired-count 1 \
               --launch-type FARGATE \
               --network-configuration "awsvpcConfiguration={subnets=[PublicSubnet1,PublicSubnet2],securityGroups=[Dev-EC2-SG],assignPublicIp=ENABLED}"
           else
-            echo "Service $SERVICE_NAME already exists"
+            echo "Updating existing ECS service"
+            aws ecs update-service \
+              --cluster iot-cluster \
+              --service iot-anomaly-detection \
+              --task-definition ${{ steps.task-def.outputs.task-definition-arn }}
           fi
+
 
       - name: Deploy to Amazon ECS
         uses: aws-actions/amazon-ecs-deploy-task-definition@v1
