@@ -64,7 +64,7 @@ jobs:
 
       - name: Create or Update ECS Service
         run: |
-          if [ "${{ steps.check-service.outputs.result }}" = "MISSING" ]; then
+          if [ "${{ steps.check-service.outputs.result }}" = "None" ]; then
             echo "Creating new ECS service"
             aws ecs create-service \
               --cluster ${{ env.ECS_CLUSTER }} \
