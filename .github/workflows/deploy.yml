@@ -7,10 +7,8 @@ on:
 
 env:
   AWS_REGION: us-east-1
-  ECR_REPOSITORY: iot-ecr
   ECS_CLUSTER: iot-cluster
   ECS_SERVICE: iot-anomaly-detection
-  xECS_TASK_DEFINITION: .aws/task-definition.json
 
 jobs:
   deploy:
@@ -25,7 +23,7 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1
+          aws-region: ${{ env.AWS_REGION }}
 
       - name: Login to Amazon ECR
         id: login-ecr
@@ -33,13 +31,14 @@ jobs:
 
       - name: Build, tag, and push Docker image
         run: |
-          ECR_REPOSITORY=${{secrets.ECR_REPOSITORY}}
+          ECR_REGISTRY=${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY=${{ secrets.ECR_REPOSITORY }}
           IMAGE_TAG=${{ github.sha }}
           
           echo "ECR_REPOSITORY=${ECR_REPOSITORY}"
           echo "IMAGE_TAG=${IMAGE_TAG}"
           
-          IMAGE_URI=$ECR_REPOSITORY:${IMAGE_TAG,,}
+          IMAGE_URI=${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG,,}
           docker build -t $IMAGE_URI ./iot_simulator
           docker push $IMAGE_URI
 
@@ -50,48 +49,34 @@ jobs:
           echo '${{ secrets.ECS_TASK_DEFINITION }}' > task-definition.json
 
       - name: Fill in the new image ID in the Amazon ECS task definition
+        id: task-def
         uses: aws-actions/amazon-ecs-render-task-definition@v1
         with:
           task-definition: task-definition.json
           container-name: iot-anomaly-detection
           image: ${{ env.IMAGE_URI }}
 
-      - name: Register ECS Task Definition
-        id: task-def
-        uses: aws-actions/amazon-ecs-register-task-definition@v1
-        with:
-          task-definition: task-definition.json
-
       - name: Check if ECS Service Exists
         id: check-service
         run: |
-          aws ecs describe-services --cluster iot-cluster --services iot-anomaly-detection --query "services[0].serviceName" --output text || echo "MISSING"
+          result=$(aws ecs describe-services --cluster ${{ env.ECS_CLUSTER }} --services ${{ env.ECS_SERVICE }} --query "services[0].serviceName" --output text || echo "MISSING")
+          echo "result=$result" >> $GITHUB_OUTPUT
 
       - name: Create or Update ECS Service
-        id: create-update-service
         run: |
           if [ "${{ steps.check-service.outputs.result }}" = "MISSING" ]; then
             echo "Creating new ECS service"
             aws ecs create-service \
-              --cluster iot-cluster \
-              --service-name iot-anomaly-detection \
-              --task-definition ${{ steps.task-def.outputs.task-definition-arn }} \
+              --cluster ${{ env.ECS_CLUSTER }} \
+              --service-name ${{ env.ECS_SERVICE }} \
+              --task-definition ${{ steps.task-def.outputs.task-definition }} \
               --desired-count 1 \
               --launch-type FARGATE \
-              --network-configuration "awsvpcConfiguration={subnets=[PublicSubnet1,PublicSubnet2],securityGroups=[Dev-EC2-SG],assignPublicIp=ENABLED}"
+              --network-configuration "awsvpcConfiguration={subnets=[subnet-045f441944f0f47d1 ,subnet-0e0972ce71c3201e6],securityGroups=[sg-0c4cd8fb08b06c053],assignPublicIp=ENABLED}"
           else
             echo "Updating existing ECS service"
             aws ecs update-service \
-              --cluster iot-cluster \
-              --service iot-anomaly-detection \
-              --task-definition ${{ steps.task-def.outputs.task-definition-arn }}
+              --cluster ${{ env.ECS_CLUSTER }} \
+              --service ${{ env.ECS_SERVICE }} \
+              --task-definition ${{ steps.task-def.outputs.task-definition }}
           fi
-
-
-      - name: Deploy to Amazon ECS
-        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
-        with:
-          task-definition: ${{ steps.task-def.outputs.task-definition }}
-          service: iot-anomaly-detection
-          cluster: iot-cluster
-          wait-for-service-stability: true
