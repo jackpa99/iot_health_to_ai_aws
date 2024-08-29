@@ -5,6 +5,6 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY iot_simulator.py .
+COPY ./iot_simulator.py . 
 
 CMD ["python", "iot_simulator.py"]
