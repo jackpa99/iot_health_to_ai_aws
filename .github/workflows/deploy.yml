@@ -33,15 +33,13 @@ jobs:
 
       - name: Build, tag, and push Docker image
         run: |
-          ECR_REGISTRY='{{secrets.ECR_REPOSITORY}}''
-          ECR_REPOSITORY=iot-repo
+          ECR_REPOSITORY=${{secrets.ECR_REPOSITORY}}
           IMAGE_TAG=${{ github.sha }}
           
-          echo "ECR_REGISTRY=${ECR_REGISTRY}"
           echo "ECR_REPOSITORY=${ECR_REPOSITORY}"
           echo "IMAGE_TAG=${IMAGE_TAG}"
           
-          IMAGE_URI=$ECR_REGISTRY/$ECR_REPOSITORY:${IMAGE_TAG,,}
+          IMAGE_URI=$ECR_REPOSITORY:${IMAGE_TAG,,}
           docker build -t $IMAGE_URI ./iot_simulator
           docker push $IMAGE_URI
 
