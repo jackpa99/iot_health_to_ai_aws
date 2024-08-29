@@ -33,7 +33,7 @@ jobs:
 
       - name: Build, tag, and push Docker image
         run: |
-          ECR_REGISTRY='{{secrets.ECR_REGISTRY}}''
+          ECR_REGISTRY='{{secrets.ECR_REPOSITORY}}''
           ECR_REPOSITORY=iot-repo
           IMAGE_TAG=${{ github.sha }}
           
