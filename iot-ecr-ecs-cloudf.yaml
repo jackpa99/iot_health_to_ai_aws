@@ -1,3 +1,4 @@
+Description: 'CloudFormation template for long term image repo, ecs cluster'
 Resources:
   ECRRepository:
     Type: AWS::ECR::Repository
