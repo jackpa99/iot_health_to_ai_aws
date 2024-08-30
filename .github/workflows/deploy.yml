@@ -56,6 +56,17 @@ jobs:
           container-name: iot-anomaly-detection
           image: ${{ env.IMAGE_URI }}
 
+      - name: Register Task Definition
+        run: |
+          TASK_DEFINITION=$(aws ecs register-task-definition --cli-input-json file://task-definition.json)
+          TASK_DEFINITION_ARN=$(echo $TASK_DEFINITION | jq -r '.taskDefinition.taskDefinitionArn')
+          echo "TASK_DEFINITION_ARN=$TASK_DEFINITION_ARN" >> $GITHUB_ENV
+
+      - name: Debug Task Definition
+        run: |
+          echo "********>>>> Task Definition ARN: ${{ env.TASK_DEFINITION_ARN }}"
+          aws ecs describe-task-definition --task-definition ${{ env.TASK_DEFINITION_ARN }}         
+
       - name: Check if ECS Service Exists
         id: check-service
         run: |
@@ -69,7 +80,7 @@ jobs:
             aws ecs create-service \
               --cluster ${{ env.ECS_CLUSTER }} \
               --service-name ${{ env.ECS_SERVICE }} \
-              --task-definition ${{ steps.task-def.outputs.task-definition }} \
+              --task-definition ${{ env.TASK_DEFINITION_ARN }} \
               --desired-count 1 \
               --launch-type FARGATE \
               --network-configuration "awsvpcConfiguration={subnets=[subnet-045f441944f0f47d1 ,subnet-0e0972ce71c3201e6],securityGroups=[sg-0c4cd8fb08b06c053],assignPublicIp=ENABLED}"
@@ -78,5 +89,5 @@ jobs:
             aws ecs update-service \
               --cluster ${{ env.ECS_CLUSTER }} \
               --service ${{ env.ECS_SERVICE }} \
-              --task-definition ${{ steps.task-def.outputs.task-definition }}
+              --task-definition ${{ env.TASK_DEFINITION_ARN }} 
           fi
