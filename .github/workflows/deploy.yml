@@ -91,6 +91,20 @@ jobs:
           aws cloudformation deploy \
             --template-file iot-kafka-spark-setup.yaml \
             --stack-name iot-s3-kafka-spark-sagem \
+            --output-file stack-outputs.json
+
+    # Extract the security group ID
+          SECURITY_GROUP_ID=$(aws cloudformation describe-stacks --stack-name iot-s3-kafka-spark-sagem --query "Stacks[0].Outputs[?OutputKey=='EC2SecurityGroup'].OutputValue" --output text)
+          echo "SECURITY_GROUP_ID=$SECURITY_GROUP_ID" >> $GITHUB_ENV
+
+    # Extract the public subnet IDs
+          PUBLIC_SUBNETS=$(aws cloudformation describe-stacks --stack-name iot-s3-kafka-spark-sagem --query "Stacks[0].Outputs[?OutputKey=='PublicSubnets'].OutputValue" --output text)
+          echo "PUBLIC_SUBNETS=$PUBLIC_SUBNETS" >> $GITHUB_ENV  
+
+      - name: Use extracted values
+        run: |
+          echo "Security Group ID: ${{ env.SECURITY_GROUP_ID }}"
+          echo "Public Subnets: ${{ env.PUBLIC_SUBNETS }}"                    
 
       - name: Check if ECS Service Exists
         id: check-service
@@ -108,7 +122,7 @@ jobs:
               --task-definition ${{ env.TASK_DEFINITION_ARN }} \
               --desired-count 1 \
               --launch-type FARGATE \
-              --network-configuration "awsvpcConfiguration={subnets=[subnet-045f441944f0f47d1 ,subnet-0e0972ce71c3201e6],securityGroups=[sg-0c4cd8fb08b06c053],assignPublicIp=ENABLED}"
+              --network-configuration "awsvpcConfiguration={subnets= ${{ env.PUBLIC_SUBNETS }} ,securityGroups= ${{ env.SECURITY_GROUP_ID }} ,assignPublicIp=ENABLED}"
           else
             echo "Updating existing ECS service"
             aws ecs update-service \
