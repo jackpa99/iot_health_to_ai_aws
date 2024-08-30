@@ -1,0 +1,33 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Resources:
+  ECSTaskExecutionRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      RoleName: "ecsTaskExecutionRole"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service: "ecs-tasks.amazonaws.com"
+            Action: "sts:AssumeRole"
+      ManagedPolicyArns:
+        - "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+
+  PassRolePolicy:
+    Type: "AWS::IAM::Policy"
+    Properties:
+      PolicyName: "PassRolePolicy"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Action: "iam:PassRole"
+            Resource: "arn:aws:iam::PLACEHOLDER_ACCOUNT_ID:role/ecsTaskExecutionRole"
+      Users:
+        - Ref: ExistingIAMUser
+
+  ExistingIAMUser:
+    Type: "AWS::IAM::User"
+    Properties:
+      UserName: "github-actions-user"

@@ -211,6 +211,12 @@ Outputs:
     Export:
       Name: !Sub ${EnvironmentName}-VPCID
 
+  EC2SecurityGroup:
+  Description: The ID of the EC2 Security Group
+  Value: !Ref EC2SecurityGroup
+  Export:
+    Name: !Sub ${EnvironmentName}-EC2SecurityGroup
+      
   PublicSubnets:
     Description: A list of the public subnets
     Value: !Join [ ",", [ !Ref PublicSubnet1, !Ref PublicSubnet2 ]]
