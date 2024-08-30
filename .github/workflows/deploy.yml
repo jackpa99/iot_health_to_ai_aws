@@ -67,6 +67,31 @@ jobs:
           echo "********>>>> Task Definition ARN: ${{ env.TASK_DEFINITION_ARN }}"
           aws ecs describe-task-definition --task-definition ${{ env.TASK_DEFINITION_ARN }}         
 
+      - name: Substitute AWS Account ID
+        run: |
+          sed -i 's/PLACEHOLDER_ACCOUNT_ID/${{ secrets.AWS_AC }}/g' ecs-task-execution-role-template.yml
+
+      - name: Deploy CloudFormation stack for IAM
+        env:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+        run: |
+          aws cloudformation deploy \
+            --template-file ecs-task-execution-role-template.yml \
+            --stack-name iot-iam \
+            --capabilities CAPABILITY_NAMED_IAM
+
+      - name: Deploy CloudFormation stack for redeployable resources stack
+        env:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+        run: |
+          aws cloudformation deploy \
+            --template-file iot-kafka-spark-setup.yaml \
+            --stack-name iot-s3-kafka-spark-sagem \
+
       - name: Check if ECS Service Exists
         id: check-service
         run: |
