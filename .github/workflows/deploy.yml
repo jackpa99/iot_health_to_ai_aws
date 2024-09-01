@@ -65,13 +65,7 @@ jobs:
       - name: Debug Task Definition
         run: |
           echo "********>>>> Task Definition ARN: ${{ env.TASK_DEFINITION_ARN }}"
-          aws ecs describe-task-definition --task-definition ${{ env.TASK_DEFINITION_ARN }}         
-      - name: Deploy CloudFormation stack for IAM
-        run: |
-          aws cloudformation deploy \
-            --template-file ecs-task-execution-role-template.yml \
-            --stack-name iot-iam \
-            --capabilities CAPABILITY_NAMED_IAM
+          aws ecs describe-task-definition --task-definition ${{ env.TASK_DEFINITION_ARN }}  
 
       - name: Deploy CloudFormation stack for redeployable resources stack
         run: |
@@ -80,6 +74,14 @@ jobs:
             --stack-name iot-s3-kafka-spark-sagem \
             --output-file stack-outputs.json \
             --region ${ env.aws_region }
+            
+      - name: Deploy CloudFormation stack for IAM
+        run: |
+          aws cloudformation deploy \
+            --template-file ecs-task-execution-role-template.yml \
+            --stack-name iot-iam \
+            --capabilities CAPABILITY_NAMED_IAM
+
       - name: Substitute AWS Account ID
         run: |
           sed -i 's/PLACEHOLDER_ACCOUNT_ID/${{ secrets.AWS_AC }}/g' ecs-task-execution-role-template.yml
