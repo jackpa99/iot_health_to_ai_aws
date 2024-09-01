@@ -87,6 +87,7 @@ jobs:
             --template-file iot-kafka-spark-setup.yaml \
             --stack-name iot-s3-kafka-spark-sagem \
             --output-file stack-outputs.json
+            --region ${ env.AWS_REGION }
       - name: Substitute AWS Account ID
         run: |
           sed -i 's/PLACEHOLDER_ACCOUNT_ID/${{ secrets.AWS_AC }}/g' ecs-task-execution-role-template.yml
