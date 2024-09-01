@@ -67,10 +67,6 @@ jobs:
           echo "********>>>> Task Definition ARN: ${{ env.TASK_DEFINITION_ARN }}"
           aws ecs describe-task-definition --task-definition ${{ env.TASK_DEFINITION_ARN }}         
       - name: Deploy CloudFormation stack for IAM
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_REGION: ${{ env.AWS_REGION }}
         run: |
           aws cloudformation deploy \
             --template-file ecs-task-execution-role-template.yml \
@@ -78,16 +74,12 @@ jobs:
             --capabilities CAPABILITY_NAMED_IAM
 
       - name: Deploy CloudFormation stack for redeployable resources stack
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_REGION: ${{ env.AWS_REGION }}
         run: |
           aws cloudformation deploy \
             --template-file iot-kafka-spark-setup.yaml \
             --stack-name iot-s3-kafka-spark-sagem \
-            --output-file stack-outputs.json
-            --region ${ env.AWS_REGION }
+            --output-file stack-outputs.json \
+            --region ${ env.aws_region }
       - name: Substitute AWS Account ID
         run: |
           sed -i 's/PLACEHOLDER_ACCOUNT_ID/${{ secrets.AWS_AC }}/g' ecs-task-execution-role-template.yml
