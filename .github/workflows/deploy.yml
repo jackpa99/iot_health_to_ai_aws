@@ -92,12 +92,12 @@ jobs:
           sed -i 's/PLACEHOLDER_ACCOUNT_ID/${{ secrets.AWS_AC }}/g' ecs-task-execution-role-template.yml
 # put back here
     # Extract the security group ID
-          SECURITY_GROUP_ID=$(aws cloudformation describe-stacks --stack-name iot-s3-kafka-spark-sagem --query "Stacks[0].Outputs[?OutputKey=='EC2SecurityGroup'].OutputValue" --output text)
-          echo "SECURITY_GROUP_ID=$SECURITY_GROUP_ID" >> $GITHUB_ENV
+        SECURITY_GROUP_ID=$(aws cloudformation describe-stacks --stack-name iot-s3-kafka-spark-sagem --query "Stacks[0].Outputs[?OutputKey=='EC2SecurityGroup'].OutputValue" --output text)
+        echo "SECURITY_GROUP_ID=$SECURITY_GROUP_ID" >> $GITHUB_ENV
 
     # Extract the public subnet IDs
-          PUBLIC_SUBNETS=$(aws cloudformation describe-stacks --stack-name iot-s3-kafka-spark-sagem --query "Stacks[0].Outputs[?OutputKey=='PublicSubnets'].OutputValue" --output text)
-          echo "PUBLIC_SUBNETS=$PUBLIC_SUBNETS" >> $GITHUB_ENV  
+        PUBLIC_SUBNETS=$(aws cloudformation describe-stacks --stack-name iot-s3-kafka-spark-sagem --query "Stacks[0].Outputs[?OutputKey=='PublicSubnets'].OutputValue" --output text)
+        echo "PUBLIC_SUBNETS=$PUBLIC_SUBNETS" >> $GITHUB_ENV  
 
       - name: Use extracted values
         run: |
