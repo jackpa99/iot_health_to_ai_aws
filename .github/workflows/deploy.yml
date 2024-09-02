@@ -67,36 +67,26 @@ jobs:
           echo "********>>>> Task Definition ARN: ${{ env.TASK_DEFINITION_ARN }}"
           aws ecs describe-task-definition --task-definition ${{ env.TASK_DEFINITION_ARN }}  
 
-      - name: Deploy CloudFormation stack for redeployable resources stack
+      - name: Retrieve stack outputs
+        id: stack-outputs
         run: |
-          aws cloudformation deploy \
-            --template-file iot-kafka-spark-setup.yaml \
-            --stack-name iot-s3-kafka-spark-sagem \
-            --output-file stack-outputs.json \
-            --region ${ env.aws_region }
-            
-      - name: Deploy CloudFormation stack for IAM
-        run: |
-          aws cloudformation deploy \
-            --template-file ecs-task-execution-role-template.yml \
-            --stack-name iot-iam \
-            --capabilities CAPABILITY_NAMED_IAM
+          aws cloudformation describe-stacks --stack-name iot-s3-kafka-spark-sagem --query "Stacks[0].Outputs" --output json > stack-outputs.json
 
+      - name: Extract security group and subnet IDs
+        id: extract-info
+        run: |
+          SECURITY_GROUP_ID=$(jq -r '.[] | select(.OutputKey=="SecurityGroupId").OutputValue' stack-outputs.json)
+          PUBLIC_SUBNET_IDS=$(jq -r '.[] | select(.OutputKey=="PublicSubnetIds").OutputValue' stack-outputs.json)
+          echo "SECURITY_GROUP_ID=${SECURITY_GROUP_ID}" >> $GITHUB_ENV
+          echo "PUBLIC_SUBNET_IDS=${PUBLIC_SUBNET_IDS}" >> $GITHUB_ENV
+
+      - name: Display extracted information
+        run: |
+          echo "Security Group ID: $SECURITY_GROUP_ID"
+          echo "Public Subnet IDs: $PUBLIC_SUBNET_IDS"
       - name: Substitute AWS Account ID
         run: |
           sed -i 's/PLACEHOLDER_ACCOUNT_ID/${{ secrets.AWS_AC }}/g' ecs-task-execution-role-template.yml
-# put back here
-    # Extract the security group ID
-          SECURITY_GROUP_ID=$(aws cloudformation describe-stacks --stack-name iot-s3-kafka-spark-sagem --query "Stacks[0].Outputs[?OutputKey=='EC2SecurityGroup'].OutputValue" --output text)
-          echo "SECURITY_GROUP_ID=$SECURITY_GROUP_ID" >> $GITHUB_ENV
-
-    # Extract the public subnet IDs
-          PUBLIC_SUBNETS=$(aws cloudformation describe-stacks --stack-name iot-s3-kafka-spark-sagem --query "Stacks[0].Outputs[?OutputKey=='PublicSubnets'].OutputValue" --output text)
-          echo "PUBLIC_SUBNETS=$PUBLIC_SUBNETS" >> $GITHUB_ENV
-      - name: Use extracted values
-        run: |
-          echo "Security Group ID: ${{ env.SECURITY_GROUP_ID }}"
-          echo "Public Subnets: ${{ env.PUBLIC_SUBNETS }}"
 
       - name: Check if ECS Service Exists
         id: check-service
