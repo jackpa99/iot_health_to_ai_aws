@@ -77,33 +77,33 @@ Resources:
         - Key: Name
           Value: !Sub ${EnvironmentName} Public Subnet (AZ2)
 
-PublicRouteTable:
-  Type: AWS::EC2::RouteTable
-  Properties:
-    VpcId: !Ref VPC
-    Tags:
-      - Key: Name
-        Value: !Sub ${EnvironmentName} Public Routes
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName} Public Routes
 
-DefaultPublicRoute:
-  Type: AWS::EC2::Route
-  DependsOn: InternetGatewayAttachment
-  Properties:
-    RouteTableId: !Ref PublicRouteTable
-    DestinationCidrBlock: 0.0.0.0/0
-    GatewayId: !Ref InternetGateway
+  DefaultPublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
 
-PublicSubnet1RouteTableAssociation:
-  Type: AWS::EC2::SubnetRouteTableAssociation
-  Properties:
-    RouteTableId: !Ref PublicRouteTable
-    SubnetId: !Ref PublicSubnet1
+  PublicSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref PublicSubnet1
 
-PublicSubnet2RouteTableAssociation:
-  Type: AWS::EC2::SubnetRouteTableAssociation
-  Properties:
-    RouteTableId: !Ref PublicRouteTable
-    SubnetId: !Ref PublicSubnet2          
+  PublicSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref PublicSubnet2          
 
   PrivateSubnet1:
     Type: AWS::EC2::Subnet
@@ -212,10 +212,10 @@ Outputs:
       Name: !Sub ${EnvironmentName}-VPCID
 
   EC2SecurityGroup:
-  Description: The ID of the EC2 Security Group
-  Value: !Ref EC2SecurityGroup
-  Export:
-    Name: !Sub ${EnvironmentName}-EC2SecurityGroup
+    Description: The ID of the EC2 Security Group
+    Value: !Ref EC2SecurityGroup
+    Export:
+      Name: !Sub ${EnvironmentName}-EC2SecurityGroup
       
   PublicSubnets:
     Description: A list of the public subnets
