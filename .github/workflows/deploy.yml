@@ -70,7 +70,7 @@ jobs:
       - name: Retrieve stack outputs
         id: stack-outputs
         run: |
-          aws cloudformation describe-stacks --stack-name iot-s3-kafka-spark-sagem --query "Stacks[0].Outputs" --output json > stack-outputs.json
+          aws cloudformation describe-stacks --stack-name iot-repaveable-stack --query "Stacks[0].Outputs" --output json > stack-outputs.json
 
       - name: Extract security group and subnet IDs
         id: extract-info
