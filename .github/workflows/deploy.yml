@@ -46,7 +46,7 @@ jobs:
      
       - name: Replace placeholders in task definition
         env:
-          AWS_ACCOUNT_ID: ${{ secrets.AWS_AC }}
+          AWS_AC: ${{ secrets.AWS_AC }}
         run: |
           envsubst < .aws/task-definition-template.json > task-definition.json
           cat task-definition.json
