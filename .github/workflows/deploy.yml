@@ -43,8 +43,7 @@ jobs:
           docker push $IMAGE_URI
 
           echo "IMAGE_URI=$IMAGE_URI" >> $GITHUB_ENV
-
-git diff       
+     
       - name: Replace placeholders in task definition
         env:
           AWS_ACCOUNT_ID: ${{ secrets.AWS_AC }}
