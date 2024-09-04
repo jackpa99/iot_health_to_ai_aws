@@ -1,6 +1,7 @@
 venv/
 anomaly_detection/tests/.pytest_cache
 iot_simulator/tests/__pycache__
+iot_simulator/__pycache__/
 iot_simulator/tests/.pytest_cache
 kafka_producer/tests/.pytest_cache
 sagemaker_train/tests/.pytest_cache
