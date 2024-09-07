@@ -8,7 +8,9 @@ on:
 env:
   AWS_REGION: us-east-1
   ECS_CLUSTER: iot-cluster
-  ECS_SERVICE: iot-anomaly-detection
+  ECS_SERVICE: iot-anomaly-detection-service
+  STACK_NAME: iot-spark-sage
+  EnvironmentName: Dev
 
 jobs:
   deploy:
@@ -71,17 +73,20 @@ jobs:
           aws ecs describe-task-definition --task-definition ${{ env.TASK_DEFINITION_ARN }}  
 
       - name: Retrieve stack outputs
-        id: stack-outputs
+        id: cf-outputs
         run: |
-          aws cloudformation describe-stacks --stack-name iot-spark-sage --query "Stacks[0].Outputs" --output json > stack-outputs.json
+          outputs==$(aws cloudformation describe-stacks --stack-name $STACK_NAME --query 'Stacks[0].Outputs[?ends_with(ExportName, `-PublicSubnetId`) || ends_with(ExportName, `-EC2SecurityGroupId`)].{key: ExportName, value: OutputValue}' --output json)
+          echo "$outputs" | jq -r '.[] | .key + "=" + .value' >> $GITHUB_OUTPUT
+          echo "================ stack outputs formatted to git env =============="
+          echo "$outputs" | jq -r '.[] | .key + "=" + .value'
 
       - name: Extract security group and subnet IDs
         id: extract-info
         run: |
-          SECURITY_GROUP_ID=$(jq -r '.[] | select(.OutputKey=="SecurityGroupId").OutputValue' stack-outputs.json)
-          PUBLIC_SUBNET_IDS=$(jq -r '.[] | select(.OutputKey=="PublicSubnetIds").OutputValue' stack-outputs.json)
-          echo "SECURITY_GROUP_ID=${SECURITY_GROUP_ID}" >> $GITHUB_ENV
-          echo "PUBLIC_SUBNET_IDS=${PUBLIC_SUBNET_IDS}" >> $GITHUB_ENV
+          echo "Public Subnet ID: ${{ steps.cf-outputs.outputs.${EnvironmentName}-PublicSubnetId }}"
+          echo "EC2 Security Group ID: ${{ steps.cf-outputs.outputs.${EnvironmentName}-EC2SecurityGroupId }}"        
+          SECURITY_GROUP_ID=${{ steps.cf-outputs.outputs.${EnvironmentName}-EC2SecurityGroupId }}"    
+          PUBLIC_SUBNET_IDS=${{ steps.cf-outputs.outputs.${EnvironmentName}-PublicSubnetId }}"
 
       - name: Display extracted information
         run: |
