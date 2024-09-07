@@ -83,10 +83,10 @@ jobs:
       - name: Extract security group and subnet IDs
         id: extract-info
         run: |
-          echo "Public Subnet ID: ${{ steps.cf-outputs.outputs.${{env.EnvironmentName}}-PublicSubnetId }}"
-          echo "EC2 Security Group ID: ${{ steps.cf-outputs.outputs.${{env.EnvironmentName}}-EC2SecurityGroupId }}"        
-          SECURITY_GROUP_ID=${{ steps.cf-outputs.outputs.${{env.EnvironmentName}}-EC2SecurityGroupId }}"    
-          PUBLIC_SUBNET_IDS=${{ steps.cf-outputs.outputs.${{env.EnvironmentName}}-PublicSubnetId }}"
+          echo "Public Subnet ID: ${{ steps.cf-outputs.outputs.${{ env.EnvironmentName }}-PublicSubnetId }}"
+          echo "EC2 Security Group ID: ${{ steps.cf-outputs.outputs.${{ env.EnvironmentName }}-EC2SecurityGroupId }}"        
+          SECURITY_GROUP_ID=${{ steps.cf-outputs.outputs.${{ env.EnvironmentName }}-EC2SecurityGroupId }}"    
+          PUBLIC_SUBNET_IDS=${{ steps.cf-outputs.outputs.${{ env.EnvironmentName }}-PublicSubnetId }}"
 
       - name: Display extracted information
         run: |
