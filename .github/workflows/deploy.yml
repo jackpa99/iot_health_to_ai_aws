@@ -76,7 +76,7 @@ jobs:
         id: cf-outputs
         run: |
           aws cloudformation describe-stacks --stack-name iot-repaveable-stack --query 'Stacks[0].Outputs' --output json
-          outputs=$(aws cloudformation describe-stacks --stack-name ${{ env.STACK_NAME }} --query 'Stacks[0].Outputs[?ExportName!=`null` && (ends_with(ExportName, `-PublicSubnetId`) || ends_with(ExportName, `-EC2SecurityGroupId`))].{key: ExportName, value: OutputValue}' --output json)
+          outputs=$(aws cloudformation describe-stacks --stack-name ${{ env.STACK_NAME }} --query 'Stacks[0].Outputs[?ExportName!=`null` && (ends_with(ExportName, `-PUB-NETS`) || ends_with(ExportName, `-EC2SecurityGroup`))].{key: ExportName, value: OutputValue}' --output json)
           echo "================ stack outputs formatted to git env =============="
           echo "$outputs" 
           echo "$outputs" | jq -r '.[] | .key + "=" + .value' >> $GITHUB_OUTPUT
@@ -94,8 +94,8 @@ jobs:
       - name: Create or Update ECS Service
         run: |
           if [ "${{ steps.check-service.outputs.result }}" = "None" ]; then
-            SECURITY_GROUP_ID=${{ steps.cf-outputs.outputs.Dev-EC2SecurityGroupId }}"    
-            PUBLIC_SUBNET_IDS=${{ steps.cf-outputs.outputs.Dev-PublicSubnetId }}" 
+            SECURITY_GROUP_ID=${{ steps.cf-outputs.outputs.Dev-EC2SecurityGroup }}"    
+            PUBLIC_SUBNET_IDS=${{ steps.cf-outputs.outputs.Dev-PUB-NETS }}" 
             echo "Creating new ECS service"
             echo "Public Subnet ID: $PUBLIC_SUBNET_IDS
             echo "EC2 Security Group ID: $SECURITY_GROUP_ID

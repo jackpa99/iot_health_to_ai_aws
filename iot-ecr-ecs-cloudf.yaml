@@ -13,17 +13,3 @@ Resources:
     Type: AWS::ECS::Cluster
     Properties:
       ClusterName: iot-cluster
-
-Outputs:
-  PublicSubnetId:
-    Description: "ID of the Public Subnet"
-    Value: Fn::ImportValue: 
-      'Fn::Sub': '${EnvironmentName}-PUB-NETS'
-    Export:
-      Name: !Sub "${EnvironmentName}-PublicSubnetId"
-
-  EC2SecurityGroupId:
-    Description: "ID of the EC2 Security Group"
-    Value: !ImportValue "${EnvironmentName}-EC2SecurityGroup"
-    Export:
-      Name: !Sub "${EnvironmentName}-EC2SecurityGroupId"
