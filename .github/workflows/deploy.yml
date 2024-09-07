@@ -80,18 +80,6 @@ jobs:
           echo "================ stack outputs formatted to git env =============="
           echo "$outputs" | jq -r '.[] | .key + "=" + .value'
 
-      - name: Extract security group and subnet IDs
-        id: extract-info
-        run: |
-          echo "Public Subnet ID: ${{ steps.cf-outputs.outputs.${{ env.EnvironmentName }}-PublicSubnetId }}"
-          echo "EC2 Security Group ID: ${{ steps.cf-outputs.outputs.${{ env.EnvironmentName }}-EC2SecurityGroupId }}"        
-          SECURITY_GROUP_ID=${{ steps.cf-outputs.outputs.${{ env.EnvironmentName }}-EC2SecurityGroupId }}"    
-          PUBLIC_SUBNET_IDS=${{ steps.cf-outputs.outputs.${{ env.EnvironmentName }}-PublicSubnetId }}"
-
-      - name: Display extracted information
-        run: |
-          echo "Security Group ID: $SECURITY_GROUP_ID"
-          echo "Public Subnet IDs: $PUBLIC_SUBNET_IDS"
       - name: Substitute AWS Account ID
         run: |
           sed -i 's/PLACEHOLDER_ACCOUNT_ID/${{ secrets.AWS_AC }}/g' ecs-task-execution-role-template.yml
@@ -105,14 +93,19 @@ jobs:
       - name: Create or Update ECS Service
         run: |
           if [ "${{ steps.check-service.outputs.result }}" = "None" ]; then
+            SECURITY_GROUP_ID=${{ steps.cf-outputs.outputs.Dev-EC2SecurityGroupId }}"    
+            PUBLIC_SUBNET_IDS=${{ steps.cf-outputs.outputs.Dev-PublicSubnetId }}" 
             echo "Creating new ECS service"
+            echo "Public Subnet ID: $PUBLIC_SUBNET_IDS
+            echo "EC2 Security Group ID: $SECURITY_GROUP_ID
+
             aws ecs create-service \
               --cluster ${{ env.ECS_CLUSTER }} \
               --service-name ${{ env.ECS_SERVICE }} \
               --task-definition ${{ env.TASK_DEFINITION_ARN }} \
               --desired-count 1 \
               --launch-type FARGATE \
-              --network-configuration "awsvpcConfiguration={subnets= [ ${{ steps.cf-outputs.outputs.${{ env.EnvironmentName }}-PublicSubnetId }}],securityGroups=[${{ steps.cf-outputs.outputs.${{ env.EnvironmentName }}-EC2SecurityGroupId }}],assignPublicIp=ENABLED}"
+              --network-configuration "awsvpcConfiguration={subnets= [ $PUBLIC_SUBNET_IDS ],securityGroups=[ $SECURITY_GROUP_ID ],assignPublicIp=ENABLED}"
           else
             echo "Updating existing ECS service"
             aws ecs update-service \
