@@ -76,9 +76,9 @@ jobs:
         id: cf-outputs
         run: |
           outputs=$(aws cloudformation describe-stacks --stack-name $STACK_NAME --query 'Stacks[0].Outputs[?ends_with(ExportName, `-PublicSubnetId`) || ends_with(ExportName, `-EC2SecurityGroupId`)].{key: ExportName, value: OutputValue}' --output json)
-          echo "$outputs" | jq -r '.[] | .key + "=" + .value' >> $GITHUB_OUTPUT
           echo "================ stack outputs formatted to git env =============="
-          echo "$outputs" | jq -r '.[] | .key + "=" + .value'
+          echo "$outputs" 
+          echo "$outputs" | jq -r '.[] | .key + "=" + .value' >> $GITHUB_OUTPUT
 
       - name: Substitute AWS Account ID
         run: |
