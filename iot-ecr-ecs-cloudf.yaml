@@ -17,7 +17,8 @@ Resources:
 Outputs:
   PublicSubnetId:
     Description: "ID of the Public Subnet"
-    Value: !ImportValue "${EnvironmentName}-PUB-NETS"
+    Value: Fn::ImportValue: 
+      'Fn::Sub': '${EnvironmentName}-PUB-NETS'
     Export:
       Name: !Sub "${EnvironmentName}-PublicSubnetId"
 
