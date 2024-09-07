@@ -75,7 +75,7 @@ jobs:
       - name: Retrieve stack outputs
         id: cf-outputs
         run: |
-          outputs=$(aws cloudformation describe-stacks --stack-name $STACK_NAME --query 'Stacks[0].Outputs[?ends_with(ExportName, `-PublicSubnetId`) || ends_with(ExportName, `-EC2SecurityGroupId`)].{key: ExportName, value: OutputValue}' --output json)
+          outputs=$(aws cloudformation describe-stacks --stack-name ${{ env.STACK_NAME }} --query 'Stacks[0].Outputs[?ends_with(ExportName, `-PublicSubnetId`) || ends_with(ExportName, `-EC2SecurityGroupId`)].{key: ExportName, value: OutputValue}' --output json)
           echo "================ stack outputs formatted to git env =============="
           echo "$outputs" 
           echo "$outputs" | jq -r '.[] | .key + "=" + .value' >> $GITHUB_OUTPUT
