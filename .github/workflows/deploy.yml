@@ -9,7 +9,7 @@ env:
   AWS_REGION: us-east-1
   ECS_CLUSTER: iot-cluster
   ECS_SERVICE: iot-anomaly-detection-service
-  STACK_NAME: iot-spark-sage
+  STACK_NAME: iot-repaveable-stack
   EnvironmentName: Dev
 
 jobs:
