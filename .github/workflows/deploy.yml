@@ -106,7 +106,7 @@ jobs:
               --task-definition ${{ env.TASK_DEFINITION_ARN }} \
               --desired-count 1 \
               --launch-type FARGATE \
-              --network-configuration "awsvpcConfiguration={subnets=[$PUBLIC_SUBNET_IDS],securityGroups=[ $SECURITY_GROUP_ID ],assignPublicIp=ENABLED}"
+              --network-configuration "awsvpcConfiguration={subnets=subnets=[${PUBLIC_SUBNET_IDS//,/ }],securityGroups=[ $SECURITY_GROUP_ID ],assignPublicIp=ENABLED}"
           else
             echo "Updating existing ECS service"
             aws ecs update-service \
