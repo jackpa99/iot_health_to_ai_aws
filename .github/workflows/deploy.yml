@@ -97,7 +97,7 @@ jobs:
             SECURITY_GROUP_ID="${{ steps.cf-outputs.outputs.Dev-EC2SecurityGroup }}"    
             PUBLIC_SUBNET_IDS="${{ steps.cf-outputs.outputs.Dev-PUB-NETS }}" 
             # Debug: Print the substituted subnet value
-            SUBNETS_SUBSTITUTED="${PUBLIC_SUBNET_IDS//,/ }"
+            # need commas after all SUBNETS_SUBSTITUTED="${PUBLIC_SUBNET_IDS//,/ }"
             echo "Subnets after substitution: $SUBNETS_SUBSTITUTED"
             echo "Creating new ECS service"
             echo "Public Subnet ID: $PUBLIC_SUBNET_IDS"
@@ -108,7 +108,7 @@ jobs:
               --task-definition ${TASK_DEFINITION_ARN} \
               --desired-count 1 \
               --launch-type FARGATE \
-              --network-configuration \"awsvpcConfiguration={subnets=[ ${SUBNETS_SUBSTITUTED} ],securityGroups=[ $SECURITY_GROUP_ID ],assignPublicIp=ENABLED}\""
+              --network-configuration \"awsvpcConfiguration={subnets=[ ${PUBLIC_SUBNET_IDS} ],securityGroups=[ $SECURITY_GROUP_ID ],assignPublicIp=ENABLED}\""
             echo $output_crt 
             $output_crt
           else
