@@ -88,17 +88,17 @@ jobs:
       - name: Check if ECS Service Exists
         id: check-service
         run: |
-          result=$(aws ecs describe-services --cluster ${{ env.ECS_CLUSTER }} --services ${{ env.ECS_SERVICE }} --query "services[0].serviceName" --output text || echo "MISSING")
+          result=$(aws ecs describe-services --cluster ${ECS_CLUSTER } --services ${ ECS_SERVICE } --query "services[0].serviceName" --output text || echo "MISSING")
           echo "result=$result" >> $GITHUB_OUTPUT
 
       - name: Create or Update ECS Service
         run: |
-          if [ "${{ steps.check-service.outputs.result }}" = "None" ]; then
+          if [ "${{ steps.check-service.outputs.result }}" = "None" ] || [ "${{ steps.check-service.outputs.result }}" = "Missing" ]; then
             SECURITY_GROUP_ID=${{ steps.cf-outputs.outputs.Dev-EC2SecurityGroup }}"    
             PUBLIC_SUBNET_IDS=${{ steps.cf-outputs.outputs.Dev-PUB-NETS }}" 
             echo "Creating new ECS service"
-            echo "Public Subnet ID: $PUBLIC_SUBNET_IDS
-            echo "EC2 Security Group ID: $SECURITY_GROUP_ID
+            echo "Public Subnet ID: $PUBLIC_SUBNET_IDS"
+            echo "EC2 Security Group ID: $SECURITY_GROUP_ID"
             output_crt="aws ecs create-service \
               --cluster ${ECS_CLUSTER} \
               --service-name ${ECS_SERVICE} \
