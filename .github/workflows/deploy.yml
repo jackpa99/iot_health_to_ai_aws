@@ -94,8 +94,8 @@ jobs:
       - name: Create or Update ECS Service
         run: |
           if [ "${{ steps.check-service.outputs.result }}" = "None" ] || [ "${{ steps.check-service.outputs.result }}" = "Missing" ]; then
-            SECURITY_GROUP_ID=${{ steps.cf-outputs.outputs.Dev-EC2SecurityGroup }}"    
-            PUBLIC_SUBNET_IDS=${{ steps.cf-outputs.outputs.Dev-PUB-NETS }}" 
+            SECURITY_GROUP_ID="${{ steps.cf-outputs.outputs.Dev-EC2SecurityGroup }}"    
+            PUBLIC_SUBNET_IDS="${{ steps.cf-outputs.outputs.Dev-PUB-NETS }}" 
             # Debug: Print the substituted subnet value
             SUBNETS_SUBSTITUTED="${PUBLIC_SUBNET_IDS//,/ }"
             echo "Subnets after substitution: $SUBNETS_SUBSTITUTED"
