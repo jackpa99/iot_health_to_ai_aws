@@ -97,8 +97,8 @@ jobs:
             SECURITY_GROUP_ID=${{ steps.cf-outputs.outputs.Dev-EC2SecurityGroup }}"    
             PUBLIC_SUBNET_IDS=${{ steps.cf-outputs.outputs.Dev-PUB-NETS }}" 
             echo "Creating new ECS service"
-            echo "Public Subnet ID: $PUBLIC_SUBNET_IDS
-            echo "EC2 Security Group ID: $SECURITY_GROUP_ID
+            echo "Public Subnet ID: $PUBLIC_SUBNET_IDS"
+            echo "EC2 Security Group ID: $SECURITY_GROUP_ID"
             output_crt="aws ecs create-service \
               --cluster ${ECS_CLUSTER} \
               --service-name ${ECS_SERVICE} \
