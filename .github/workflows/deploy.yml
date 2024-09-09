@@ -88,7 +88,7 @@ jobs:
       - name: Check if ECS Service Exists
         id: check-service
         run: |
-          result=$(aws ecs describe-services --cluster ${ECS_CLUSTER } --services ${ ECS_SERVICE } --query "services[0].serviceName" --output text || echo "MISSING")
+          result=$(aws ecs describe-services --cluster ${{env.ECS_CLUSTER} } --services ${ {env.ECS_SERVICE} } --query "services[0].serviceName" --output text || echo "MISSING")
           echo "result=$result" >> $GITHUB_OUTPUT
 
       - name: Create or Update ECS Service
