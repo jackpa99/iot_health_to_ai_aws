@@ -6,9 +6,21 @@
 #The simulate_iot_devices function continuously generates data for all devices and sends it to Kafka.
 
 import random
+import sys
 import time
 import json
 from kafka import KafkaProducer
+import logging
+
+logging.basicConfig(level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(sys.stdout),
+        logging.FileHandler('/var/log/iot-simulator/app.log')
+    ]
+)
+
+logger = logging.getLogger('iot_simulator')
 
 def generate_device_data(device_id):
     return {
@@ -30,10 +42,20 @@ def simulate_iot_devices(num_devices, kafka_bootstrap_servers):
             data = generate_device_data(device_id)
             producer.send('iot-data', data)
             print(f"Sent data for device {device_id}: {data}")
+            logging.info(f"Sent data for device_{device_id}: {data}")
         time.sleep(1)  # Send data every second
 
-if __name__ == "__main__":
-    NUM_DEVICES = 10  # Simulate 10 IoT devices
-    KAFKA_BOOTSTRAP_SERVERS = ['localhost:9092']  # Update with your Kafka server(s)
+def main():
+    try:
+        logger.info("Starting IoT simulator...")
+        NUM_DEVICES = 10  # Simulate 10 IoT devices
+        KAFKA_BOOTSTRAP_SERVERS = ['localhost:9092']  # Update with Kafka server(s)
     
-    simulate_iot_devices(NUM_DEVICES, KAFKA_BOOTSTRAP_SERVERS)
+        simulate_iot_devices(NUM_DEVICES, KAFKA_BOOTSTRAP_SERVERS)
+    except Exception as e:
+        logger.exception(f"An error occurred: {str(e)}")
+        sys.exit(1)
+
+if __name__ == "__main__":
+    main()
+    

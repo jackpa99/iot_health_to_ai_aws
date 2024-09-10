@@ -27,6 +27,7 @@ Resources:
             Action: [
               "logs:CreateLogGroup",
               "logs:CreateLogStream",
+              "logs:CreateLogGroup",
               "logs:PutLogEvents"
             ]
             Resource: "*"

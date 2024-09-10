@@ -512,6 +512,7 @@ Go to the AWS CloudFormation console.
 Click "Create stack" and choose "With new resources (standard)".
 Upload the YAML file.
 Fill in the required parameter (KafkaClientSubnets).
+
 Review and create the stack.
 After the stack is created:
 
