@@ -96,16 +96,18 @@ jobs:
           if [ "${{ steps.check-service.outputs.result }}" = "None" ] || [ "${{ steps.check-service.outputs.result }}" = "Missing" ]; then
             SECURITY_GROUP_ID="${{ steps.cf-outputs.outputs.Dev-EC2SecurityGroup }}"    
             PUBLIC_SUBNET_IDS="${{ steps.cf-outputs.outputs.Dev-PUB-NETS }}" 
+            NETWORK_CFG="awsvpcConfiguration={subnets=[${PUBLIC_SUBNET_IDS}],securityGroups=[$SECURITY_GROUP_ID],assignPublicIp=ENABLED}"
             echo "Creating new ECS service"
             echo "Public Subnet ID: $PUBLIC_SUBNET_IDS"
             echo "EC2 Security Group ID: $SECURITY_GROUP_ID"
+            echo "Network cfg: ${NETWORK_CFG}""
             output_crt="aws ecs create-service \
               --cluster ${ECS_CLUSTER} \
               --service-name ${ECS_SERVICE} \
               --task-definition ${TASK_DEFINITION_ARN} \
               --desired-count 1 \
               --launch-type FARGATE \
-              --network-configuration \"awsvpcConfiguration={subnets=[${PUBLIC_SUBNET_IDS}],securityGroups=[$SECURITY_GROUP_ID],assignPublicIp=ENABLED}\""
+              --network-configuration $NETWORK_CFG
             echo $output_crt 
             $output_crt
           else
