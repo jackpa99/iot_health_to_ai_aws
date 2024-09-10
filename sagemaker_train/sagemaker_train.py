@@ -1,26 +1,41 @@
-# sagemaker_train.py
 import pandas as pd
 import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import IsolationForest
 import joblib
+from kafka import KafkaConsumer
+import json
 
-# Simulating data preparation for multiple devices
-devices = range(10)
+# Kafka consumer setup
+KAFKA_TOPIC = 'iot-data'
+KAFKA_BOOTSTRAP_SERVERS = ['localhost:9092']  # Update with your Kafka server(s)
+
+consumer = KafkaConsumer(
+    KAFKA_TOPIC,
+    bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
+    value_deserializer=lambda m: json.loads(m.decode('utf-8')),
+    auto_offset_reset='earliest',
+    enable_auto_commit=True,
+    group_id='sagemaker_training_group'
+)
+
+# Initialize a DataFrame to store consumed data
 data = []
-for device in devices:
-    device_data = pd.DataFrame({
-        'device_id': [device] * 1000,
-        'temperature': np.random.uniform(20, 30, 1000),
-        'humidity': np.random.uniform(40, 60, 1000),
-        'pressure': np.random.uniform(990, 1010, 1000)
-    })
-    data.append(device_data)
 
-df = pd.concat(data, ignore_index=True)
+# Consume data from Kafka
+for message in consumer:
+    data.append(message.value)
+
+    # Optional: Limit data consumption to a certain number of records for training
+    if len(data) >= 10000:  # Change this limit as needed
+        break
+
+# Convert to DataFrame
+df = pd.DataFrame(data)
 
 # Train a separate model for each device
-for device in devices:
+device_ids = df['device_id'].unique()
+for device in device_ids:
     device_df = df[df['device_id'] == device]
     features = ['temperature', 'humidity', 'pressure']
     X = device_df[features]
