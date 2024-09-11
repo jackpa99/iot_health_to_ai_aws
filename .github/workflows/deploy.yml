@@ -88,7 +88,7 @@ jobs:
       - name: Check if ECS Service Exists
         id: check-service
         run: |
-          fullresult = ${aws ecs describe-services --cluster ${{env.ECS_CLUSTER}} --services ${{env.ECS_SERVICE}} --output table}
+          fullresult = ${aws ecs describe-services --cluster ${{env.ECS_CLUSTER}} --services ${{env.ECS_SERVICE}} --output table}}
           echo ${fullresult}
           result=$(aws ecs describe-services --cluster ${{env.ECS_CLUSTER}} --services ${{env.ECS_SERVICE}} --query "services[0].serviceName" --output text || echo "MISSING")
           echo "Result of service check: $result"
