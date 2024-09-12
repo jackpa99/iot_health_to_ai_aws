@@ -45,6 +45,27 @@ Resources:
       Users:
         - Ref: ExistingIAMUser
 
+  GithubActionsUserPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: GithubActionsECSDeployPolicy
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - 'ecs:UpdateService'
+              - 'ecs:DescribeServices'
+              - 'ecs:RegisterTaskDefinition'
+              - 'ecr:GetAuthorizationToken'
+              - 'ecr:BatchCheckLayerAvailability'
+              - 'ecr:GetDownloadUrlForLayer'
+              - 'ecr:BatchGetImage'
+              - 'ecr:PutImage'
+            Resource: '*'
+      Users:
+        - !Ref ExistingIAMUser
+        
   ExistingIAMUser:
     Type: "AWS::IAM::User"
     Properties:
