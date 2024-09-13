@@ -64,8 +64,8 @@ Resources:
               - 'ecr:PutImage'
             Resource: '*'
       Users:
-        - !Ref ExistingIAMUser
-        
+        - Ref: ExistingIAMUser
+
   ExistingIAMUser:
     Type: "AWS::IAM::User"
     Properties:
