@@ -1,0 +1,14 @@
+graph TD
+    A[Multiple Users with Mobile Apps] -->|Generate Health Metrics| B[Google Fit API or Other API]
+    B -->|Expose Metrics| C[API Endpoint]
+    C -->|Ingest Metrics Periodically| D[Metrics gateway]
+    D -->|Transform to Common Format| E[Unified Health Metrics]
+    E -->|Stream Metrics| F[Process to Update Personal AI Model in AWS SageMaker]
+    F -->|Store Model| G[Storage for AI Models] -->| Infer from model| H
+    E -->|Stream Metrics| H[Anomaly Detection Process]
+    H -->|Evaluate Metrics| I[Identify Anomalous Metrics]
+    I -->|Expose Anomalies| J[AWS QuickSight]
+    I -->|Expose Anomalies| K[API Endpoint]
+    K -->|Query with User ID| L[Custom UI]
+    M[Simulator for Mock users and helath metricsData] -->|Generate Mock Data| D
+  
