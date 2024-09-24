@@ -9,6 +9,7 @@ import random
 import sys
 import time
 import json
+import os
 from kafka import KafkaProducer
 import logging
 
