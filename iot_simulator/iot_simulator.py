@@ -12,6 +12,9 @@ import json
 from kafka import KafkaProducer
 import logging
 
+# Create log directory if it doesn't exist
+os.makedirs('/var/log/iot-simulator', exist_ok=True)
+
 logging.basicConfig(level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
