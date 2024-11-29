@@ -1,0 +1,26 @@
+sequenceDiagram
+  participant MobileDevices as User Mobile/Devices
+  participant HealthAPI as Health API (Google Health Connect, Apple Health, others)
+  participant Gateway as Vital IntelliSense Gateway
+  participant UserCatEngine as User Categorisation Engine
+  participant UserCatStore as User Categorisation Store
+  participant ML_Pipeline as Vital IntelliSense PROPRIETARY ML Pipeline (AWS | Google | Azure)
+  participant Dashboard as Healthcare Facility Dashboard
+  participant MessageEngine as Message Personalisation Engine
+  participant NominatedContacts as Nominated Contacts
+
+  MobileDevices ->>+ HealthAPI: Transmit Metrics
+  MobileDevices ->>+ Gateway: Transmit User Characteristics
+  HealthAPI ->>+ Gateway: Ingest Metrics
+  Gateway ->> UserCatEngine: Stream User Characteristics
+  UserCatEngine ->> UserCatStore: Store Categorisation
+  Gateway -->>- ML_Pipeline: Send Cleansed, Normalised Metrics
+  ML_Pipeline ->> UserCatStore: Fetch User Category
+  ML_Pipeline ->> ML_Pipeline: execute proprietary, personalised algorithm
+  ML_Pipeline -->> Dashboard: Send users' status and anomlaies
+  ML_Pipeline ->> MobileDevices: Send user status and anomalies
+  ML_Pipeline ->> MessageEngine: Send user status and anomlaies
+  MessageEngine ->> UserCatStore: Fetch User characteristics
+  MessageEngine ->> NominatedContacts: Send Personalised alerts
+
+
