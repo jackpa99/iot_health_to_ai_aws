@@ -1,0 +1,73 @@
+# Spark driver as a Deployment. For production-grade Spark on K8s, consider
+# the Spark Operator (https://github.com/kubeflow/spark-operator) which takes
+# a SparkApplication CR instead of a Deployment.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: spark-streaming
+  namespace: iot
+---
+# Role needed for Spark driver to create executor pods. Drop this if you
+# switch to the Spark Operator (it manages RBAC itself).
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: spark-streaming
+  namespace: iot
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "services", "configmaps"]
+    verbs: ["create", "get", "list", "watch", "delete", "update", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: spark-streaming
+  namespace: iot
+subjects:
+  - kind: ServiceAccount
+    name: spark-streaming
+    namespace: iot
+roleRef:
+  kind: Role
+  name: spark-streaming
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: spark-streaming
+  namespace: iot
+  labels:
+    app.kubernetes.io/name: spark-streaming
+    app.kubernetes.io/part-of: iot-health-to-ai
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: spark-streaming
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: spark-streaming
+    spec:
+      serviceAccountName: spark-streaming
+      containers:
+        - name: driver
+          image: REGISTRY/iot-health-to-ai/spark-streaming:latest  # set by CI
+          imagePullPolicy: IfNotPresent
+          envFrom:
+            - configMapRef:
+                name: iot-config
+          env:
+            - name: CHECKPOINT_DIR
+              value: /var/spark/checkpoints
+          resources:
+            requests: {cpu: 500m, memory: 1Gi}
+            limits:   {cpu: "2",  memory: 4Gi}
+          volumeMounts:
+            - name: checkpoints
+              mountPath: /var/spark/checkpoints
+      volumes:
+        - name: checkpoints
+          emptyDir: {}

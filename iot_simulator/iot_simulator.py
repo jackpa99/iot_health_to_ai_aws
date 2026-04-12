@@ -1,65 +1,71 @@
-# IoT simulator does the following:
+"""IoT device simulator that pushes telemetry to Kafka."""
+from __future__ import annotations
 
-#It simulates multiple devices (10 in this case, but you can adjust the NUM_DEVICES constant).
-#Each device has a unique device_id.
-#The generate_device_data function creates data for a single device, including a device ID and timestamp.
-#The simulate_iot_devices function continuously generates data for all devices and sends it to Kafka.
-
+import json
+import logging
+import os
 import random
 import sys
 import time
-import json
-import os
+from typing import Iterable
+
 from kafka import KafkaProducer
-import logging
 
-# Create log directory if it doesn't exist
-os.makedirs('/var/log/iot-simulator', exist_ok=True)
+LOG_DIR = os.getenv("IOT_LOG_DIR", "/var/log/iot-simulator")
 
-logging.basicConfig(level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler(sys.stdout),
-        logging.FileHandler('/var/log/iot-simulator/app.log')
-    ]
-)
 
-logger = logging.getLogger('iot_simulator')
+def _configure_logging() -> logging.Logger:
+    handlers: list[logging.Handler] = [logging.StreamHandler(sys.stdout)]
+    try:
+        os.makedirs(LOG_DIR, exist_ok=True)
+        handlers.append(logging.FileHandler(os.path.join(LOG_DIR, "app.log")))
+    except OSError:
+        # Log dir may be unwritable (e.g. in unit-test environments); stdout is enough.
+        pass
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        handlers=handlers,
+    )
+    return logging.getLogger("iot_simulator")
 
-def generate_device_data(device_id):
+
+logger = _configure_logging()
+
+
+def generate_device_data(device_id: int) -> dict:
     return {
         "device_id": device_id,
         "timestamp": int(time.time()),
         "temperature": random.uniform(20, 30),
         "humidity": random.uniform(40, 60),
-        "pressure": random.uniform(990, 1010)
+        "pressure": random.uniform(990, 1010),
     }
 
-def simulate_iot_devices(num_devices, kafka_bootstrap_servers):
-    producer = KafkaProducer(
-        bootstrap_servers=kafka_bootstrap_servers,
-        value_serializer=lambda v: json.dumps(v).encode('utf-8')
-    )
 
+def simulate_iot_devices(num_devices: int, kafka_bootstrap_servers: Iterable[str]) -> None:
+    producer = KafkaProducer(
+        bootstrap_servers=list(kafka_bootstrap_servers),
+        value_serializer=lambda v: json.dumps(v).encode("utf-8"),
+    )
     while True:
         for device_id in range(num_devices):
             data = generate_device_data(device_id)
-            producer.send('iot-data', data)
-            print(f"Sent data for device {device_id}: {data}")
-            logging.info(f"Sent data for device_{device_id}: {data}")
+            producer.send("iot-data", data)
+            logger.info("Sent data for device_%s: %s", device_id, data)
         time.sleep(1)  # Send data every second
 
-def main():
+
+def main() -> None:
     try:
         logger.info("Starting IoT simulator...")
-        NUM_DEVICES = 10  # Simulate 10 IoT devices
-        KAFKA_BOOTSTRAP_SERVERS = ['localhost:9092']  # Update with Kafka server(s)
-    
-        simulate_iot_devices(NUM_DEVICES, KAFKA_BOOTSTRAP_SERVERS)
-    except Exception as e:
-        logger.exception(f"An error occurred: {str(e)}")
+        num_devices = int(os.getenv("NUM_DEVICES", "10"))
+        bootstrap = os.getenv("KAFKA_BROKER", "localhost:9092").split(",")
+        simulate_iot_devices(num_devices, bootstrap)
+    except Exception:
+        logger.exception("IoT simulator crashed")
         sys.exit(1)
+
 
 if __name__ == "__main__":
     main()
-    

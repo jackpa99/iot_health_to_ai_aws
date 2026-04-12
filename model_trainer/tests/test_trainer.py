@@ -1,58 +1,61 @@
-# tests/test_sagemaker_train.py
-import unittest
-import pandas as pd
-import numpy as np
-import joblib
 import os
-from sagemaker_train import train_models
+import unittest
+from pathlib import Path
 
-class TestSageMakerTrain(unittest.TestCase):
+import fsspec
+import joblib
+import numpy as np
+import pandas as pd
+from sklearn.ensemble import IsolationForest
 
-    def setUp(self):
-        # Create a sample dataset
-        devices = range(2)
-        data = []
-        for device in devices:
-            device_data = pd.DataFrame({
-                'device_id': [device] * 100,
-                'temperature': np.random.uniform(20, 30, 100),
-                'humidity': np.random.uniform(40, 60, 100),
-                'pressure': np.random.uniform(990, 1010, 100)
-            })
-            data.append(device_data)
-        self.df = pd.concat(data, ignore_index=True)
+from trainer import train_models
 
-    def test_train_models(self):
-        # Train models
-        train_models(self.df)
 
-        # Check if models are saved for each device
+class TestTrainer(unittest.TestCase):
+    def setUp(self) -> None:
+        self.tmp_dir = Path(os.environ.get("PYTEST_TMPDIR", "/tmp")) / "trainer_test_models"
+        self.tmp_dir.mkdir(parents=True, exist_ok=True)
+        # Exercise the fsspec code path on the local filesystem; s3:// swaps in
+        # at deploy time via the MODEL_STORAGE_URI env var.
+        self.storage_uri = f"file://{self.tmp_dir}"
+        rng = np.random.default_rng(42)
+        frames = [
+            pd.DataFrame(
+                {
+                    "device_id": [device] * 100,
+                    "temperature": rng.uniform(20, 30, 100),
+                    "humidity": rng.uniform(40, 60, 100),
+                    "pressure": rng.uniform(990, 1010, 100),
+                }
+            )
+            for device in range(2)
+        ]
+        self.df = pd.concat(frames, ignore_index=True)
+
+    def test_train_models(self) -> None:
+        paths = train_models(self.df, storage_uri=self.storage_uri)
+        self.assertEqual(len(paths), 2)
         for device in range(2):
-            model_path = f'/tmp/model_device_{device}.joblib'
-            self.assertTrue(os.path.exists(model_path))
+            path = self.tmp_dir / f"model_device_{device}.joblib"
+            self.assertTrue(path.exists())
 
-            # Load the model and make sure it's an IsolationForest
-            model = joblib.load(model_path)
-            self.assertEqual(str(type(model)), "<class 'sklearn.ensemble._iforest.IsolationForest'>")
+            # Round-trip through fsspec to validate the abstraction, not just the
+            # local write path.
+            with fsspec.open(f"file://{path}", "rb") as fh:
+                model = joblib.load(fh)
+            self.assertIsInstance(model, IsolationForest)
 
-            # Test the model with some data
-            device_data = self.df[self.df['device_id'] == device]
-            features = ['temperature', 'humidity', 'pressure']
-            X = device_data[features]
-            predictions = model.predict(X)
+            X = self.df[self.df["device_id"] == device][["temperature", "humidity", "pressure"]]
+            preds = model.predict(X)
+            self.assertEqual(len(preds), len(X))
+            self.assertTrue(np.isin(preds, (-1, 1)).all())
 
-            # Check if predictions are made for all rows
-            self.assertEqual(len(predictions), len(X))
-
-            # Check if predictions are either 1 (normal) or -1 (anomaly)
-            self.assertTrue(all((predictions == 1) | (predictions == -1)))
-
-    def tearDown(self):
-        # Clean up saved models
+    def tearDown(self) -> None:
         for device in range(2):
-            model_path = f'/tmp/model_device_{device}.joblib'
-            if os.path.exists(model_path):
-                os.remove(model_path)
+            path = self.tmp_dir / f"model_device_{device}.joblib"
+            if path.exists():
+                path.unlink()
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

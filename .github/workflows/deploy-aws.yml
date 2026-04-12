@@ -1,9 +1,10 @@
-name: Deploy to Amazon ECS
+name: Deploy to Amazon ECS (opt-in)
 
+# Opt-in only. The primary deploy path is `deploy-k8s.yml`. This workflow is
+# retained for the AWS reference deployment (see `deploy/aws/`). Trigger from
+# the Actions tab when an AWS rollout is needed.
 on:
-  push:
-    branches:
-      - main
+  workflow_dispatch:
 
 env:
   AWS_REGION: us-east-1
@@ -18,10 +19,10 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v1
+        uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -29,7 +30,7 @@ jobs:
 
       - name: Login to Amazon ECR
         id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v1
+        uses: aws-actions/amazon-ecr-login@v2
 
       - name: Build, tag, and push Docker image
         run: |
@@ -50,12 +51,12 @@ jobs:
         env:
           AWS_AC: ${{ secrets.AWS_AC }}
         run: |
-          envsubst < .aws/task-definition-template.json > task-definition.json
+          envsubst < deploy/aws/task-definition-template.json > task-definition.json
           cat task-definition.json
 
       - name: Fill in the new image ID in the Amazon ECS task definition
         id: task-def
-        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        uses: aws-actions/amazon-ecs-render-task-definition@v1.7.0
         with:
           task-definition: task-definition.json
           container-name: iot-anomaly-detection
@@ -83,7 +84,7 @@ jobs:
 
       - name: Substitute AWS Account ID
         run: |
-          sed -i 's/PLACEHOLDER_ACCOUNT_ID/${{ secrets.AWS_AC }}/g' ecs-task-execution-role-template.yml
+          sed -i 's/PLACEHOLDER_ACCOUNT_ID/${{ secrets.AWS_AC }}/g' deploy/aws/ecs-task-execution-role-template.yml
 
       - name: Check if ECS Service Exists
         id: check-service

@@ -1,22 +1,33 @@
-# not actually required as iot_simulator has a producer
-import os
-from kafka import KafkaProducer
+from __future__ import annotations
+
 import json
+import os
+from typing import Any
+
+from kafka import KafkaProducer
+
 
 class KafkaMessageProducer:
-    def __init__(self):
-        self.broker = os.getenv('KAFKA_BROKER', 'kafka:9092')
-        self.topic = os.getenv('KAFKA_TOPIC', 'iot_data')
+    def __init__(self) -> None:
+        self.broker: str = os.getenv("KAFKA_BROKER", "kafka:9092")
+        self.topic: str = os.getenv("KAFKA_TOPIC", "iot-data")
         self.producer = KafkaProducer(
             bootstrap_servers=[self.broker],
-            value_serializer=lambda v: json.dumps(v).encode('utf-8')
+            value_serializer=lambda v: json.dumps(v).encode("utf-8"),
         )
 
-    def send_message(self, message):
+    def send_message(self, message: dict[str, Any]) -> None:
         self.producer.send(self.topic, message)
         self.producer.flush()
 
+    def close(self) -> None:
+        self.producer.flush()
+        self.producer.close()
+
+
 if __name__ == "__main__":
     producer = KafkaMessageProducer()
-    # Example usage
-    producer.send_message({"test": "message"})
+    try:
+        producer.send_message({"test": "message"})
+    finally:
+        producer.close()

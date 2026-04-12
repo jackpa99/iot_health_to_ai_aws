@@ -1,0 +1,20 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: iot
+
+resources:
+  - namespace.yaml
+  - configmap.yaml
+  - kafka/kafka-cluster.yaml
+  - kafka/kafka-topic.yaml
+  - secrets/secretstore.example.yaml
+  - secrets/externalsecret-s3.yaml
+  - iot-simulator.yaml
+  - spark-streaming.yaml
+  - model-trainer-cronjob.yaml
+
+# Image tags are rewritten by CI before apply; set REGISTRY on the command
+# line or in an overlay. Example:
+#   kustomize edit set image \
+#     REGISTRY/iot-health-to-ai/iot-simulator=harbor.corp.example.com/iot/iot-simulator:$(git rev-parse --short HEAD)

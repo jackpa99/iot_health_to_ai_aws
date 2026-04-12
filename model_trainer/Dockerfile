@@ -1,27 +1,12 @@
-# Use an official Python runtime as a parent image
-FROM python:3.8-slim-buster
+FROM python:3.12-slim-bookworm
 
-# Set the working directory in the container
 WORKDIR /app
 
-# Copy the current directory contents into the container at /app
 COPY . /app
-COPY ./tests /app/tests 
 
-# Install any needed packages specified in requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Install pytest and pytest-mock for running tests
-RUN pip install pytest pytest-mock
-
-# Make port 8080 available to the world outside this container
-EXPOSE 8080
-
-# Define environment variable
-ENV NAME SageMakerTraining
-
-# Run sagemaker_train.py when the container launches
-CMD ["python", "sagemaker_train.py"]
-
-# Command to run tests (commented out by default)
-# CMD ["pytest", "tests/test_sagemaker_train.py"]
+ENV NAME=ModelTrainer
+# MODEL_STORAGE_URI defaults to file:///tmp/models; override at deploy time
+# (e.g. s3://bucket/prefix plus S3_ENDPOINT_URL for corp S3 / MinIO).
+CMD ["python", "trainer.py"]
