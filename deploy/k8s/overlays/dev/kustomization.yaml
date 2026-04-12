@@ -1,0 +1,45 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../base
+
+patches:
+  # Dev: single Kafka broker, smaller storage
+  - target:
+      kind: KafkaNodePool
+      name: combined
+    patch: |
+      - op: replace
+        path: /spec/replicas
+        value: 1
+      - op: replace
+        path: /spec/storage/volumes/0/size
+        value: "5Gi"
+
+  # Dev: fewer partitions
+  - target:
+      kind: KafkaTopic
+      name: iot-data
+    patch: |
+      - op: replace
+        path: /spec/partitions
+        value: 10
+
+  # Dev: lower Spark resources
+  - target:
+      kind: Deployment
+      name: spark-streaming
+    patch: |
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/requests/memory
+        value: "1Gi"
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/memory
+        value: "2Gi"
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/requests/cpu
+        value: "500m"
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/cpu
+        value: "1"

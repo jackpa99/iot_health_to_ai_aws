@@ -1,0 +1,82 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  REGISTRY: ${{ vars.REGISTRY || 'ghcr.io' }}
+  IMAGE_NAMESPACE: ${{ vars.IMAGE_NAMESPACE || github.repository_owner }}
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service:
+          - model_trainer
+          - ace_prediction
+          - iot_simulator
+      fail-fast: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: |
+          pip install -r ${{ matrix.service }}/requirements.txt
+          # model_storage is shared; add model_trainer to path for services that need it
+          export PYTHONPATH=$PYTHONPATH:$PWD/model_trainer
+      - name: Run tests
+        run: |
+          cd ${{ matrix.service }}
+          PYTHONPATH=$PYTHONPATH:$PWD:$PWD/../model_trainer python -m pytest tests/ -v
+
+  build-and-push:
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - service: iot_simulator
+            context: ./iot_simulator
+            dockerfile: ./iot_simulator/Dockerfile
+          - service: model_trainer
+            context: ./model_trainer
+            dockerfile: ./model_trainer/Dockerfile
+          - service: spark_streaming
+            context: .
+            dockerfile: ./spark_streaming/Dockerfile
+    steps:
+      - uses: actions/checkout@v4
+      - name: Login to registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ secrets.REGISTRY_USERNAME || github.actor }}
+          password: ${{ secrets.REGISTRY_PASSWORD || secrets.GITHUB_TOKEN }}
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/${{ matrix.service }}:${{ github.sha }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/${{ matrix.service }}:latest
+
+  deploy-k8s:
+    needs: build-and-push
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v3
+      - name: Deploy to Kubernetes
+        run: |
+          kubectl apply -k deploy/k8s/overlays/${{ vars.K8S_OVERLAY || 'dev' }}/

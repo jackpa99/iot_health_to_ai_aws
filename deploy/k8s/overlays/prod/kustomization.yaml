@@ -1,0 +1,93 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../base
+
+patches:
+  # Prod Kafka: 5 brokers, 100Gi storage
+  - target:
+      kind: KafkaNodePool
+      name: combined
+    patch: |
+      - op: replace
+        path: /spec/replicas
+        value: 5
+      - op: replace
+        path: /spec/storage/volumes/0/size
+        value: "100Gi"
+
+  # Prod Kafka config: replication factor 3
+  - target:
+      kind: Kafka
+      name: iot-kafka
+    patch: |
+      - op: replace
+        path: /spec/kafka/config/offsets.topic.replication.factor
+        value: 3
+      - op: replace
+        path: /spec/kafka/config/transaction.state.log.replication.factor
+        value: 3
+      - op: replace
+        path: /spec/kafka/config/transaction.state.log.min.isr
+        value: 2
+      - op: add
+        path: /spec/kafka/config/num.partitions
+        value: 500
+
+  # Prod topic: 500 partitions, replication 3
+  - target:
+      kind: KafkaTopic
+      name: iot-data
+    patch: |
+      - op: replace
+        path: /spec/partitions
+        value: 500
+      - op: replace
+        path: /spec/replicas
+        value: 3
+
+  # Prod Spark: more resources
+  - target:
+      kind: Deployment
+      name: spark-streaming
+    patch: |
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/requests/memory
+        value: "8Gi"
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/requests/cpu
+        value: "4"
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/memory
+        value: "16Gi"
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/cpu
+        value: "8"
+
+  # Prod Spark HPA: higher max
+  - target:
+      kind: HorizontalPodAutoscaler
+      name: spark-streaming-hpa
+    patch: |
+      - op: replace
+        path: /spec/maxReplicas
+        value: 16
+
+  # Prod model trainer: more resources
+  - target:
+      kind: CronJob
+      name: model-trainer
+    patch: |
+      - op: replace
+        path: /spec/jobTemplate/spec/template/spec/containers/0/resources/requests/memory
+        value: "8Gi"
+      - op: replace
+        path: /spec/jobTemplate/spec/template/spec/containers/0/resources/requests/cpu
+        value: "4"
+      - op: replace
+        path: /spec/jobTemplate/spec/template/spec/containers/0/resources/limits/memory
+        value: "16Gi"
+      - op: replace
+        path: /spec/jobTemplate/spec/template/spec/containers/0/resources/limits/cpu
+        value: "8"

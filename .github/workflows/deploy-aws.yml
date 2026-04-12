@@ -1,9 +1,8 @@
-name: Deploy to Amazon ECS
+name: Deploy to Amazon ECS (Legacy)
 
+# Manual dispatch only — the primary CI/CD is in ci.yml
 on:
-  push:
-    branches:
-      - main
+  workflow_dispatch:
 
 env:
   AWS_REGION: us-east-1

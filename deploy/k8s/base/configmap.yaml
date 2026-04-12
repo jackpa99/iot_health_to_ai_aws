@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: iot-health-config
+  namespace: iot-health
+data:
+  KAFKA_BROKER: "iot-kafka-kafka-bootstrap:9092"
+  MODEL_STORAGE_URI: "s3://models/"
+  S3_ENDPOINT_URL: "http://minio:9000"

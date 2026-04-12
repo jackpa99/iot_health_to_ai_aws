@@ -1,0 +1,441 @@
+diff --git a/algo/requirements.txt b/algo/requirements.txt
+index 2b10577..e4f819f 100644
+--- a/algo/requirements.txt
++++ b/algo/requirements.txt
+@@ -1,4 +1,4 @@
+-pandas==1.5.0
+-numpy==1.23.0
+-scikit-learn==1.1.0
+-matplotlib==3.5.0
+\ No newline at end of file
++pandas>=2.2.0
++numpy>=1.26.0
++scikit-learn>=1.5.0
++matplotlib>=3.9.0
+\ No newline at end of file
+diff --git a/anomaly_detection/Dockerfile b/anomaly_detection/Dockerfile
+index e980281..2d7e3b2 100644
+--- a/anomaly_detection/Dockerfile
++++ b/anomaly_detection/Dockerfile
+@@ -1,4 +1,4 @@
+-FROM python:3.9-slim
++FROM python:3.12-slim
+ 
+ WORKDIR /app
+ 
+diff --git a/anomaly_detection/anomaly_detection.py b/anomaly_detection/anomaly_detection.py
+index 5a61880..f4951f1 100644
+--- a/anomaly_detection/anomaly_detection.py
++++ b/anomaly_detection/anomaly_detection.py
+@@ -14,10 +14,7 @@
+ 
+ #To use this in your Spark streaming job, you would call detect_anomalies(parsed_df) on your parsed DataFrame of IoT data. The resulting DataFrame will include an is_anomaly column that you can use for further processing or alerting.
+ 
+-from pyspark.ml.feature import VectorAssembler
+-from pyspark.ml.clustering import KMeans
+-from pyspark.sql.functions import udf, pandas_udf, PandasUDFType
+-from pyspark.sql.types import BooleanType, StructType, StructField, IntegerType, FloatType, BooleanType
++from pyspark.sql.types import BooleanType, StructType, StructField, IntegerType, FloatType
+ import pandas as pd
+ from sklearn.ensemble import IsolationForest
+ 
+@@ -25,10 +22,6 @@ def detect_anomalies(df):
+     # Define the features we'll use for anomaly detection
+     feature_cols = ["temperature", "humidity", "pressure"]
+     
+-    # Create a VectorAssembler to combine feature columns into a single vector column
+-    assembler = VectorAssembler(inputCols=feature_cols, outputCol="features")
+-    vectorized_df = assembler.transform(df)
+-    
+     # Define the schema for the output of our pandas UDF
+     output_schema = StructType([
+         StructField("device_id", IntegerType()),
+@@ -38,7 +31,6 @@ def detect_anomalies(df):
+         StructField("is_anomaly", BooleanType())
+     ])
+ 
+-    @pandas_udf(output_schema, PandasUDFType.GROUPED_MAP)
+     def detect_device_anomalies(pdf):
+         # Train an Isolation Forest model for this device's data
+         model = IsolationForest(contamination=0.1, random_state=42)
+@@ -54,8 +46,8 @@ def detect_anomalies(df):
+         
+         return result_pdf
+ 
+-    # Apply the anomaly detection function to each device group
+-    return vectorized_df.groupBy("device_id").apply(detect_device_anomalies)
++    # Apply the anomaly detection function to each device group (applyInPandas replaces deprecated GROUPED_MAP)
++    return df.groupBy("device_id").applyInPandas(detect_device_anomalies, schema=output_schema)
+ 
+ # If you want to test the function independently
+ if __name__ == "__main__":
+diff --git a/anomaly_detection/requirements.txt b/anomaly_detection/requirements.txt
+index 115c99e..0144da4 100644
+--- a/anomaly_detection/requirements.txt
++++ b/anomaly_detection/requirements.txt
+@@ -1,4 +1,4 @@
+-boto3==1.18.0
+-pandas==1.3.0
+-scikit-learn>=0.24.2
+-pytest==7.3.1
+\ No newline at end of file
++boto3>=1.34.0
++pandas>=2.2.0
++scikit-learn>=1.5.0
++pytest>=8.0.0
+\ No newline at end of file
+diff --git a/docker-compose.yml b/docker-compose.yml
+index 41e0e50..36362cc 100644
+--- a/docker-compose.yml
++++ b/docker-compose.yml
+@@ -1,61 +1,61 @@
+-version: '3'
+-
+-services:
+-  zookeeper:
+-    image: wurstmeister/zookeeper
+-    ports:
+-      - "2181:2181"
+-
+-  kafka:
+-    image: wurstmeister/kafka
+-    ports:
+-      - "9092:9092"
+-    environment:
+-      KAFKA_ADVERTISED_HOST_NAME: kafka
+-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+-    volumes:
+-      - /var/run/docker.sock:/var/run/docker.sock
+-
+-  iot_simulator:
+-    build: ./iot_simulator
+-    depends_on:
+-      - kafka
+-    environment:
+-      - KAFKA_BROKER=kafka:9092
+-
+-  kafka_producer:
+-    build: ./kafka_producer
+-    depends_on:
+-      - kafka
+-    environment:
+-      - KAFKA_BROKER=kafka:9092
+-
+-  spark_streaming:
+-    build: ./spark_streaming
+-    depends_on:
+-      - kafka
+-    environment:
+-      - KAFKA_BROKER=kafka:9092
+-
+-  anomaly_detection:
+-    build: ./anomaly_detection
+-    depends_on:
+-      - spark_streaming
+-    environment:
+-      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+-      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+-      - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION}
+-
+-  sagemaker_training:
+-    build: ./sagemaker
+-    environment:
+-      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+-      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+-      - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION}
+-      - S3_BUCKET=${S3_BUCKET}
+-    volumes:
+-      - ./sagemaker:/app/sagemaker
+-      - sagemaker_output:/opt/ml/model
+-
+-volumes:
+-  sagemaker_output:
+\ No newline at end of file
++services:
++  kafka:
++    image: apache/kafka:3.7.1
++    ports:
++      - "9092:9092"
++    environment:
++      KAFKA_NODE_ID: 1
++      KAFKA_PROCESS_ROLES: broker,controller
++      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
++      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
++      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
++      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
++      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
++      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
++      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
++      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
++      CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
++
++  iot_simulator:
++    build: ./iot_simulator
++    depends_on:
++      - kafka
++    environment:
++      - KAFKA_BROKER=kafka:9092
++
++  kafka_producer:
++    build: ./kafka_producer
++    depends_on:
++      - kafka
++    environment:
++      - KAFKA_BROKER=kafka:9092
++
++  spark_streaming:
++    build: ./spark_streaming
++    depends_on:
++      - kafka
++    environment:
++      - KAFKA_BROKER=kafka:9092
++
++  anomaly_detection:
++    build: ./anomaly_detection
++    depends_on:
++      - spark_streaming
++    environment:
++      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
++      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
++      - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION}
++
++  sagemaker_training:
++    build: ./sagemaker_train
++    environment:
++      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
++      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
++      - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION}
++      - S3_BUCKET=${S3_BUCKET}
++    volumes:
++      - ./sagemaker_train:/app/sagemaker
++      - sagemaker_output:/opt/ml/model
++
++volumes:
++  sagemaker_output:
+diff --git a/iot_simulator/Dockerfile b/iot_simulator/Dockerfile
+index 21083eb..f396e1c 100644
+--- a/iot_simulator/Dockerfile
++++ b/iot_simulator/Dockerfile
+@@ -1,4 +1,4 @@
+-FROM python:3.9-slim
++FROM python:3.12-slim
+ 
+ WORKDIR /app
+ 
+diff --git a/iot_simulator/iot_simulator.py b/iot_simulator/iot_simulator.py
+index e9ce597..c6bea7a 100644
+--- a/iot_simulator/iot_simulator.py
++++ b/iot_simulator/iot_simulator.py
+@@ -46,7 +46,7 @@ def simulate_iot_devices(num_devices, kafka_bootstrap_servers):
+             data = generate_device_data(device_id)
+             producer.send('iot-data', data)
+             print(f"Sent data for device {device_id}: {data}")
+-            logging.info(f"Sent data for device_{device_id}: {data}")
++            logger.info(f"Sent data for device_{device_id}: {data}")
+         time.sleep(1)  # Send data every second
+ 
+ def main():
+diff --git a/iot_simulator/requirements.txt b/iot_simulator/requirements.txt
+index 6c3b523..c87c89c 100644
+--- a/iot_simulator/requirements.txt
++++ b/iot_simulator/requirements.txt
+@@ -1,3 +1,3 @@
+-kafka-python-ng>=2.0.2
+-pytest==7.3.1
+-flask
+\ No newline at end of file
++kafka-python-ng>=2.2.0
++pytest>=8.0.0
++flask>=3.0.0
+\ No newline at end of file
+diff --git a/kafka_producer/Dockerfile b/kafka_producer/Dockerfile
+index c1699f9..97513b2 100644
+--- a/kafka_producer/Dockerfile
++++ b/kafka_producer/Dockerfile
+@@ -1,4 +1,4 @@
+-FROM python:3.9-slim
++FROM python:3.12-slim
+ 
+ WORKDIR /app
+ 
+diff --git a/kafka_producer/requirements.txt b/kafka_producer/requirements.txt
+index 0ca7cc7..7ef1f80 100644
+--- a/kafka_producer/requirements.txt
++++ b/kafka_producer/requirements.txt
+@@ -1,2 +1,2 @@
+-kafka-python==2.0.2
+-pytest==7.3.1
+\ No newline at end of file
++kafka-python-ng>=2.2.0
++pytest>=8.0.0
+\ No newline at end of file
+diff --git a/sagemaker_train/Dockerfile b/sagemaker_train/Dockerfile
+index 23b2c0e..7f4cf62 100644
+--- a/sagemaker_train/Dockerfile
++++ b/sagemaker_train/Dockerfile
+@@ -1,5 +1,5 @@
+ # Use an official Python runtime as a parent image
+-FROM python:3.8-slim-buster
++FROM python:3.12-slim
+ 
+ # Set the working directory in the container
+ WORKDIR /app
+diff --git a/sagemaker_train/requirements.txt b/sagemaker_train/requirements.txt
+index fa63a6e..4f9cfca 100644
+--- a/sagemaker_train/requirements.txt
++++ b/sagemaker_train/requirements.txt
+@@ -1,5 +1,5 @@
+-sagemaker>=2.100.0
+-boto3>=1.18.0
+-pandas>=1.3.0
+-scikit-learn>=0.24.2
+-pytest>=7.3.1
+\ No newline at end of file
++sagemaker>=2.200.0
++boto3>=1.34.0
++pandas>=2.2.0
++scikit-learn>=1.5.0
++pytest>=8.0.0
+\ No newline at end of file
+diff --git a/sagemaker_train/sagemaker_train.py b/sagemaker_train/sagemaker_train.py
+index a7e4faf..fa8f89d 100644
+--- a/sagemaker_train/sagemaker_train.py
++++ b/sagemaker_train/sagemaker_train.py
+@@ -6,47 +6,45 @@ import joblib
+ from kafka import KafkaConsumer
+ import json
+ 
+-# Kafka consumer setup
+-KAFKA_TOPIC = 'iot-data'
+-KAFKA_BOOTSTRAP_SERVERS = ['localhost:9092']  # Update with your Kafka server(s)
+-
+-consumer = KafkaConsumer(
+-    KAFKA_TOPIC,
+-    bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
+-    value_deserializer=lambda m: json.loads(m.decode('utf-8')),
+-    auto_offset_reset='earliest',
+-    enable_auto_commit=True,
+-    group_id='sagemaker_training_group'
+-)
+-
+-# Initialize a DataFrame to store consumed data
+-data = []
+-
+-# Consume data from Kafka
+-for message in consumer:
+-    data.append(message.value)
+-
+-    # Optional: Limit data consumption to a certain number of records for training
+-    if len(data) >= 10000:  # Change this limit as needed
+-        break
+-
+-# Convert to DataFrame
+-df = pd.DataFrame(data)
+-
+-# Train a separate model for each device
+-device_ids = df['device_id'].unique()
+-for device in device_ids:
+-    device_df = df[df['device_id'] == device]
++
++def train_models(df):
++    """Train a separate IsolationForest model for each device."""
++    device_ids = df['device_id'].unique()
+     features = ['temperature', 'humidity', 'pressure']
+-    X = device_df[features]
+-    
+-    train, test = train_test_split(X, test_size=0.2)
+ 
+-    # Train model
+-    model = IsolationForest(contamination=0.1, random_state=42)
+-    model.fit(train)
++    for device in device_ids:
++        device_df = df[df['device_id'] == device]
++        X = device_df[features]
++
++        train, test = train_test_split(X, test_size=0.2)
++
++        model = IsolationForest(contamination=0.1, random_state=42)
++        model.fit(train)
++
++        joblib.dump(model, f'/tmp/model_device_{device}.joblib')
++
++    print("Training complete. Models saved for each device.")
++
++
++if __name__ == "__main__":
++    # Kafka consumer setup
++    KAFKA_TOPIC = 'iot-data'
++    KAFKA_BOOTSTRAP_SERVERS = ['localhost:9092']
++
++    consumer = KafkaConsumer(
++        KAFKA_TOPIC,
++        bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
++        value_deserializer=lambda m: json.loads(m.decode('utf-8')),
++        auto_offset_reset='earliest',
++        enable_auto_commit=True,
++        group_id='sagemaker_training_group'
++    )
+ 
+-    # Save model
+-    joblib.dump(model, f'/tmp/model_device_{device}.joblib')
++    data = []
++    for message in consumer:
++        data.append(message.value)
++        if len(data) >= 10000:
++            break
+ 
+-print("Training complete. Models saved for each device.")
+\ No newline at end of file
++    df = pd.DataFrame(data)
++    train_models(df)
+diff --git a/spark_streaming/Dockerfile b/spark_streaming/Dockerfile
+index 46bf4de..ea13855 100644
+--- a/spark_streaming/Dockerfile
++++ b/spark_streaming/Dockerfile
+@@ -1,4 +1,4 @@
+-FROM apache/spark-py:v3.1.2
++FROM apache/spark-py:v3.5.3
+ 
+ WORKDIR /app
+ 
+@@ -7,4 +7,4 @@ RUN pip install --no-cache-dir -r requirements.txt
+ 
+ COPY spark_streaming.py .
+ 
+-CMD ["spark-submit", "--packages", "org.apache.spark:spark-sql-kafka-0-10_2.12:3.1.2", "spark_streaming.py"]
+\ No newline at end of file
++CMD ["spark-submit", "--packages", "org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.3", "spark_streaming.py"]
+\ No newline at end of file
+diff --git a/spark_streaming/requirements.txt b/spark_streaming/requirements.txt
+index 6db3015..8888b83 100644
+--- a/spark_streaming/requirements.txt
++++ b/spark_streaming/requirements.txt
+@@ -1,2 +1,2 @@
+-pyspark==3.1.2
+-pytest==7.3.1
+\ No newline at end of file
++pyspark>=3.5.0
++pytest>=8.0.0
+\ No newline at end of file
+diff --git a/spark_streaming/spark_streaming.py b/spark_streaming/spark_streaming.py
+index abbb992..d96f7ec 100644
+--- a/spark_streaming/spark_streaming.py
++++ b/spark_streaming/spark_streaming.py
+@@ -5,7 +5,7 @@
+ # You have all the necessary dependencies installed (PySpark, Kafka-Python, etc.).
+ # You can run the script using:
+ 
+-# spark-submit --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.1.2 spark_streaming.py
++# spark-submit --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.3 spark_streaming.py
+ 
+ #The spark-submit command would typically be run from the command line (terminal or command prompt) on the machine where you want to execute the Spark job. The location from which you run this command depends on your setup and deployment strategy. Here are a few common scenarios:
+ 
+@@ -39,7 +39,7 @@ def process_batch(df, epoch_id):
+     anomaly_df = detect_anomalies(df)
+     
+     # Filter out the anomalies
+-    anomalies = anomaly_df.filter(anomaly_df.is_anomaly == True)
++    anomalies = anomaly_df.filter(col("is_anomaly"))
+     
+     # Write anomalies to console (in a production environment, you might want to save this to a database or send alerts)
+     if not anomalies.isEmpty():

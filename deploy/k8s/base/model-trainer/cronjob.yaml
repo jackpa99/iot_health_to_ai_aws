@@ -1,0 +1,36 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: model-trainer
+  namespace: iot-health
+spec:
+  schedule: "0 */6 * * *"
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      activeDeadlineSeconds: 21600
+      template:
+        spec:
+          containers:
+            - name: model-trainer
+              image: model-trainer:latest
+              envFrom:
+                - configMapRef:
+                    name: iot-health-config
+                - secretRef:
+                    name: s3-credentials
+              env:
+                - name: CONSUME_DURATION_SECONDS
+                  value: "300"
+                - name: N_COHORTS
+                  value: "200"
+                - name: MAX_MESSAGES
+                  value: "5000000"
+              resources:
+                requests:
+                  memory: "4Gi"
+                  cpu: "2"
+                limits:
+                  memory: "8Gi"
+                  cpu: "4"
+          restartPolicy: OnFailure

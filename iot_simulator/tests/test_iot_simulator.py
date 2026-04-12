@@ -1,40 +1,42 @@
-# tests/test_iot_simulator.py
 import unittest
 from unittest.mock import patch, MagicMock
-from iot_simulator import generate_device_data, simulate_iot_devices
+from iot_simulator import generate_device_data, generate_device_ids
+
 
 class TestIoTSimulator(unittest.TestCase):
 
+    def test_generate_device_ids(self):
+        ids = generate_device_ids(5, "eu-west-1")
+        self.assertEqual(len(ids), 5)
+        for device_id in ids:
+            self.assertTrue(device_id.startswith("eu-west-1/d-"))
+            # UUID hex portion should be 12 chars
+            uuid_part = device_id.split("/d-")[1]
+            self.assertEqual(len(uuid_part), 12)
+
+    def test_generate_device_ids_unique(self):
+        ids = generate_device_ids(100, "us-east-1")
+        self.assertEqual(len(set(ids)), 100)
+
     def test_generate_device_data(self):
-        device_id = 1
+        device_id = "ap-southeast-1/d-abc123def456"
         data = generate_device_data(device_id)
-        self.assertEqual(data['device_id'], device_id)
-        self.assertIn('timestamp', data)
-        self.assertIn('temperature', data)
-        self.assertIn('humidity', data)
-        self.assertIn('pressure', data)
+        self.assertEqual(data["device_id"], device_id)
+        self.assertIn("timestamp", data)
+        self.assertIn("temperature", data)
+        self.assertIn("humidity", data)
+        self.assertIn("pressure", data)
+        self.assertIsInstance(data["temperature"], float)
 
-    @patch('iot_simulator.KafkaProducer')
-    @patch('iot_simulator.time.sleep', side_effect=InterruptedError)  # To break the infinite loop
-    def test_simulate_iot_devices(self, mock_sleep, mock_kafka_producer):
-        mock_producer = MagicMock()
-        mock_kafka_producer.return_value = mock_producer
+    def test_generate_device_data_ranges(self):
+        device_id = "us-east-1/d-000000000000"
+        for _ in range(100):
+            data = generate_device_data(device_id)
+            self.assertGreaterEqual(data["temperature"], 20)
+            self.assertLessEqual(data["temperature"], 30)
+            self.assertGreaterEqual(data["humidity"], 40)
+            self.assertLessEqual(data["humidity"], 60)
 
-        num_devices = 3
-        kafka_servers = ['localhost:9092']
 
-        with self.assertRaises(InterruptedError):
-            simulate_iot_devices(num_devices, kafka_servers)
-
-        mock_kafka_producer.assert_called_once_with(
-            bootstrap_servers=kafka_servers,
-            value_serializer=unittest.mock.ANY
-        )
-
-        # Check that data was sent for each device
-        self.assertEqual(mock_producer.send.call_count, num_devices)
-        for i in range(num_devices):
-            mock_producer.send.assert_any_call('iot-data', unittest.mock.ANY)
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

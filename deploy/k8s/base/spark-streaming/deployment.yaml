@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: spark-streaming
+  namespace: iot-health
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: spark-streaming
+  template:
+    metadata:
+      labels:
+        app: spark-streaming
+    spec:
+      containers:
+        - name: spark-streaming
+          image: spark-streaming:latest
+          envFrom:
+            - configMapRef:
+                name: iot-health-config
+            - secretRef:
+                name: s3-credentials
+          resources:
+            requests:
+              memory: "4Gi"
+              cpu: "2"
+            limits:
+              memory: "8Gi"
+              cpu: "4"
